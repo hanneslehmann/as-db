@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project name="AS DB" xmlns="http://maven.apache.org/DECORATION/1.3.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/DECORATION/1.3.0 http://maven.apache.org/xsd/decoration-1.3.0.xsd">
+
+  <bannerLeft>
+    <name>AS DB</name>
+    <href>index.html</href>
+  </bannerLeft>
+
+  <publishDate position="bottom" format="yyyy-MM-dd" />
+  <version position="bottom" />
+
+  <skin>
+    <groupId>lt.velykis.maven.skins</groupId>
+    <artifactId>reflow-maven-skin</artifactId>
+    <version>1.1.1</version>
+  </skin>
+
+  <custom>
+    <reflowSkin>
+      <smoothScroll>true</smoothScroll>
+      <highlightJs>true</highlightJs>
+      <highlightJsTheme>github</highlightJsTheme>
+      <slogan>Database import/export tool for TIBCO ActiveSpaces</slogan>
+    </reflowSkin>
+  </custom>
+
+  <body>
+    <links>
+      <item name="Get Started" href="index.html" />
+      <item name="Configuration" href="configuration.html" />
+      <item name="Architecture" href="architecture.html" />
+      <item name="Usage" href="usage.html" />
+      <item name="FAQ" href="faq.html" />
+    </links>
+  </body>
+
+</project>

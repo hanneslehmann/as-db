@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<jaxb:bindings xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://java.sun.com/xml/ns/jaxb http://java.sun.com/xml/ns/jaxb/bindingschema_2_0.xsd"
+  version="2.1">
+
+  <jaxb:bindings schemaLocation="db.xsd" node="/xs:schema">
+    <jaxb:schemaBindings>
+      <jaxb:package name="com.tibco.as.db"></jaxb:package>
+    </jaxb:schemaBindings>
+    <jaxb:bindings
+      node="//xs:complexType[@name='database']//xs:element[@name='table']">
+      <jaxb:property name="tables" />
+    </jaxb:bindings>
+    <jaxb:bindings
+      node="//xs:complexType[@name='table']//xs:element[@name='column']">
+      <jaxb:property name="columns" />
+    </jaxb:bindings>
+    <jaxb:bindings node="//xs:simpleType[@name='distributionRole']">
+      <jaxb:javaType name="com.tibco.as.space.Member.DistributionRole"
+        parseMethod="com.tibco.as.db.Adapter.parseDistributionRole"
+        printMethod="com.tibco.as.db.Adapter.printDistributionRole" />
+    </jaxb:bindings>
+    <jaxb:bindings node="//xs:simpleType[@name='dataType']">
+      <jaxb:javaType name="com.tibco.as.db.JDBCType"
+        parseMethod="com.tibco.as.db.Adapter.parseDataType"
+        printMethod="com.tibco.as.db.Adapter.printDataType" />
+    </jaxb:bindings>
+  </jaxb:bindings>
+
+</jaxb:bindings>

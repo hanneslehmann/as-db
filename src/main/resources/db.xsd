@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <xsd:element name="database" type="database" />
+
+  <xsd:complexType name="database">
+    <xsd:sequence>
+      <xsd:element name="table" type="table" minOccurs="0"
+        maxOccurs="unbounded" />
+    </xsd:sequence>
+    <xsd:attribute name="driver" type="xsd:string" />
+    <xsd:attribute name="url" type="xsd:string" />
+    <xsd:attribute name="user" type="xsd:string" />
+    <xsd:attribute name="password" type="xsd:string" />
+    <xsd:attribute name="metaspace" type="xsd:string" />
+  </xsd:complexType>
+
+  <xsd:complexType name="table">
+    <xsd:sequence>
+      <xsd:element name="column" type="column" minOccurs="0"
+        maxOccurs="unbounded" />
+      <xsd:element name="sql" type="xsd:string" minOccurs="0" />
+    </xsd:sequence>
+    <xsd:attribute name="catalog" type="xsd:string" />
+    <xsd:attribute name="schema" type="xsd:string" />
+    <xsd:attribute name="name" type="xsd:string" />
+    <xsd:attribute name="type" type="tableType" default="TABLE" />
+    <xsd:attribute name="fetchSize" type="xsd:int" />
+    <xsd:attribute name="space" type="xsd:string" />
+    <xsd:attribute name="batchSize" type="xsd:int" />
+    <xsd:attribute name="distributionRole" type="distributionRole" />
+  </xsd:complexType>
+
+  <xsd:complexType name="column">
+    <xsd:attribute name="name" type="xsd:string" />
+    <xsd:attribute name="keySequence" type="xsd:short" />
+    <xsd:attribute name="type" type="dataType" />
+    <xsd:attribute name="size" type="xsd:int" />
+    <xsd:attribute name="decimalDigits" type="xsd:int" />
+    <xsd:attribute name="radix" type="xsd:int" />
+    <xsd:attribute name="nullable" type="xsd:boolean" />
+    <xsd:attribute name="field" type="xsd:string" />
+  </xsd:complexType>
+
+  <xsd:simpleType name="tableType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="TABLE" />
+      <xsd:enumeration value="VIEW" />
+      <xsd:enumeration value="SYSTEM TABLE" />
+      <xsd:enumeration value="GLOBAL TEMPORARY" />
+      <xsd:enumeration value="LOCAL TEMPORARY" />
+      <xsd:enumeration value="ALIAS" />
+      <xsd:enumeration value="SYNONYM" />
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="dataType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="array" />
+      <xsd:enumeration value="bigint" />
+      <xsd:enumeration value="binary" />
+      <xsd:enumeration value="bit" />
+      <xsd:enumeration value="blob" />
+      <xsd:enumeration value="boolean" />
+      <xsd:enumeration value="char" />
+      <xsd:enumeration value="clob" />
+      <xsd:enumeration value="datalink" />
+      <xsd:enumeration value="date" />
+      <xsd:enumeration value="decimal" />
+      <xsd:enumeration value="distinct" />
+      <xsd:enumeration value="double" />
+      <xsd:enumeration value="float" />
+      <xsd:enumeration value="integer" />
+      <xsd:enumeration value="java_object" />
+      <xsd:enumeration value="longnvarchar" />
+      <xsd:enumeration value="longvarbinary" />
+      <xsd:enumeration value="longvarchar" />
+      <xsd:enumeration value="nchar" />
+      <xsd:enumeration value="nclob" />
+      <xsd:enumeration value="null" />
+      <xsd:enumeration value="numeric" />
+      <xsd:enumeration value="nvarchar" />
+      <xsd:enumeration value="other" />
+      <xsd:enumeration value="real" />
+      <xsd:enumeration value="ref" />
+      <xsd:enumeration value="rowid" />
+      <xsd:enumeration value="smallint" />
+      <xsd:enumeration value="sqlxml" />
+      <xsd:enumeration value="struct" />
+      <xsd:enumeration value="time" />
+      <xsd:enumeration value="timestamp" />
+      <xsd:enumeration value="tinyint" />
+      <xsd:enumeration value="varbinary" />
+      <xsd:enumeration value="varchar" />
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="distributionRole">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="leech" />
+      <xsd:enumeration value="seeder" />
+    </xsd:restriction>
+  </xsd:simpleType>
+
+</xsd:schema>
