@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import com.tibco.as.accessors.AccessorFactory;
 import com.tibco.as.accessors.ITupleAccessor;
@@ -67,11 +66,7 @@ public class DatabaseExporter extends Exporter<Object[]> {
 	public void execute() throws TransferException {
 		try {
 			connection = DatabaseCommon.getConnection(database);
-		} catch (ClassNotFoundException e) {
-			String message = MessageFormat.format(
-					"Could not find driver ''{0}''", database.getDriver());
-			throw new TransferException(message, e);
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			throw new TransferException("Could not connect to database", e);
 		}
 		super.execute();
@@ -83,6 +78,10 @@ public class DatabaseExporter extends Exporter<Object[]> {
 		} catch (SQLException e) {
 			throw new TransferException("Could not close connection", e);
 		}
+	}
+
+	public Connection getConnection() {
+		return connection;
 	}
 
 	public boolean isDoNotCloseConnection() {
@@ -103,7 +102,7 @@ public class DatabaseExporter extends Exporter<Object[]> {
 		IConverter[] converters = new IConverter[columns.size()];
 		for (int index = 0; index < columns.size(); index++) {
 			Column column = columns.get(index);
-			FieldDef fieldDef = spaceDef.getFieldDef(column.getField());
+			FieldDef fieldDef = DatabaseCommon.getFieldDef(spaceDef, column);
 			accessors[index] = AccessorFactory.create(fieldDef);
 			converters[index] = converterFactory.getConverter(
 					export.getAttributes(), fieldDef,
@@ -133,9 +132,10 @@ public class DatabaseExporter extends Exporter<Object[]> {
 			return Types.BIGINT;
 		case SHORT:
 			return Types.SMALLINT;
-		default:
+		case STRING:
 			return Types.VARCHAR;
 		}
+		return Types.NULL;
 	}
 
 	@Override
@@ -155,16 +155,35 @@ public class DatabaseExporter extends Exporter<Object[]> {
 		if (table.getSpace() == null) {
 			table.setSpace(export.getSpaceName());
 		}
-		Map<String, Table> tables;
+		if (table.getCatalog() != null) {
+			try {
+				if (!DatabaseCommon.getCatalogs(connection).contains(
+						table.getCatalog())) {
+					executeStatement(MessageFormat.format(
+							"CREATE CATALOG \"{0}\"", table.getCatalog()));
+				}
+			} catch (SQLException e) {
+				throw new TransferException("Could not create catalog", e);
+			}
+		}
+		if (table.getSchema() != null) {
+			try {
+				if (!DatabaseCommon.getSchemas(connection, table.getCatalog(),
+						null).contains(table.getSchema())) {
+					executeStatement(MessageFormat.format(
+							"CREATE SCHEMA \"{0}\"", table.getSchema()));
+				}
+			} catch (SQLException e) {
+				throw new TransferException("Could not create schema", e);
+			}
+		}
+		Table existingTable;
 		try {
-			tables = DatabaseCommon.getTableMap(connection, table);
+			existingTable = getTable(table);
 		} catch (SQLException e) {
 			throw new TransferException("Could not get tables", e);
 		}
-		String fullTableName = DatabaseCommon.getFullTableName(table);
-		boolean exists = tables.containsKey(fullTableName);
-		if (exists) {
-			Table existingTable = tables.get(fullTableName);
+		if (existingTable != null) {
 			if (table.getColumns().isEmpty()) {
 				table.getColumns().addAll(existingTable.getColumns());
 			} else {
@@ -208,11 +227,8 @@ public class DatabaseExporter extends Exporter<Object[]> {
 		List<String> keyFieldNames = new ArrayList<String>(spaceDef.getKeyDef()
 				.getFieldNames());
 		for (Column column : table.getColumns()) {
-			String fieldName = column.getField();
+			String fieldName = DatabaseCommon.getFieldName(column);
 			FieldDef fieldDef = spaceDef.getFieldDef(fieldName);
-			if (column.getName() == null) {
-				column.setName(fieldName);
-			}
 			if (column.getType() == null) {
 				column.setType(JDBCType.valueOf(getSQLType(fieldDef.getType())));
 			}
@@ -220,51 +236,17 @@ public class DatabaseExporter extends Exporter<Object[]> {
 				column.setNullable(fieldDef.isNullable());
 			}
 			if (column.getKeySequence() == null) {
-				int index = keyFieldNames.indexOf(fieldName);
-				if (index != -1) {
-					column.setKeySequence((short) (index + 1));
+				int keyIndex = keyFieldNames.indexOf(fieldName);
+				if (keyIndex != -1) {
+					column.setKeySequence((short) (keyIndex + 1));
 				}
 			}
 		}
-		if (!exists) {
-			Statement statement;
+		if (existingTable == null) {
 			try {
-				statement = connection.createStatement();
+				executeStatement(getCreateSQL(table));
 			} catch (SQLException e) {
 				throw new TransferException("Could not create table", e);
-			}
-			String catalog = table.getCatalog();
-			if (catalog != null) {
-				try {
-					if (!DatabaseCommon.getCatalogs(connection).contains(
-							catalog)) {
-						statement.execute("CREATE CATALOG " + catalog);
-					}
-				} catch (SQLException e) {
-					throw new TransferException("Could not create catalog", e);
-				}
-			}
-			String schema = table.getSchema();
-			if (schema != null) {
-				try {
-					if (!DatabaseCommon.getSchemas(connection, catalog)
-							.contains(schema)) {
-						statement.execute("CREATE SCHEMA " + schema);
-					}
-				} catch (SQLException e) {
-					throw new TransferException("Could not create schema", e);
-				}
-			}
-			String sql = getCreateSQL(table);
-			try {
-				statement.execute(sql);
-			} catch (SQLException e) {
-				throw new TransferException("Could not create table", e);
-			}
-			try {
-				statement.close();
-			} catch (SQLException e) {
-				throw new TransferException("Could not close statement", e);
 			}
 		}
 		PreparedStatement statement;
@@ -273,16 +255,40 @@ public class DatabaseExporter extends Exporter<Object[]> {
 		} catch (SQLException e) {
 			throw new TransferException("Could not prepare statement", e);
 		}
-		return new DatabaseOutputStream(statement);
+		return new DatabaseOutputStream(statement, DatabaseCommon.getAccessors(
+				table, statement));
 	}
 
-	private String getCreateSQL(Table table) {
+	private Table getTable(Table table) throws SQLException {
+		for (Table t : DatabaseCommon.getTables(connection, table.getCatalog(),
+				table.getSchema(), null,
+				new String[] { TableType.TABLE.name() })) {
+			if (t.getName().equalsIgnoreCase(table.getName())) {
+				return t;
+			}
+		}
+		return null;
+	}
+
+	private void executeStatement(String sql) throws SQLException {
+		Statement statement = connection.createStatement();
+		try {
+			statement.execute(sql);
+		} finally {
+			statement.close();
+		}
+	}
+
+	private String getCreateSQL(Table table) throws SQLException {
 		String query = "";
 		query += "CREATE TABLE " + DatabaseCommon.getFullTableName(table)
 				+ " (";
 		String[] keys = new String[0];
 		for (Column column : table.getColumns()) {
-			query += column.getName() + " " + column.getType().name();
+			String columnName = DatabaseCommon.getColumnName(column);
+			JDBCType type = column.getType();
+			String typeName = type.getName();
+			query += columnName + " " + typeName;
 			if (!Boolean.TRUE.equals(column.isNullable())) {
 				query += " not";
 			}
@@ -292,7 +298,7 @@ public class DatabaseExporter extends Exporter<Object[]> {
 				if (keys.length < keySequence) {
 					keys = Arrays.copyOf(keys, keySequence);
 				}
-				keys[keySequence - 1] = column.getName();
+				keys[keySequence - 1] = columnName;
 			}
 		}
 		query += "Primary Key (";
@@ -325,4 +331,5 @@ public class DatabaseExporter extends Exporter<Object[]> {
 				tableName, DatabaseCommon.getCommaSeparated(columnNames),
 				DatabaseCommon.getCommaSeparated(questionMarks));
 	}
+
 }

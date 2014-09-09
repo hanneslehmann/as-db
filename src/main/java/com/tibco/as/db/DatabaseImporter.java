@@ -59,10 +59,14 @@ public class DatabaseImporter extends Importer<Object[]> {
 		Collection<Transfer> imports = new ArrayList<Transfer>();
 		Collection<Table> tables = new ArrayList<Table>();
 		for (Table table : getTables(database.getTables())) {
-			try {
-				tables.addAll(DatabaseCommon.getTables(connection, table));
-			} catch (SQLException e) {
-				throw new TransferException("Could not get tables", e);
+			if (table.getSql() == null) {
+				try {
+					tables.addAll(DatabaseCommon.getTables(connection, table));
+				} catch (SQLException e) {
+					throw new TransferException("Could not get tables", e);
+				}
+			} else {
+				tables.add(table);
 			}
 		}
 		database.getTables().clear();
@@ -121,7 +125,7 @@ public class DatabaseImporter extends Importer<Object[]> {
 		DatabaseImport config = (DatabaseImport) transfer;
 		String[] keys = new String[0];
 		for (Column column : config.getTable().getColumns()) {
-			String fieldName = column.getField();
+			String fieldName = DatabaseCommon.getFieldName(column);
 			FieldType fieldType = getFieldType(column);
 			FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
 			fieldDef.setNullable(Boolean.TRUE.equals(column.isNullable()));
@@ -242,7 +246,8 @@ public class DatabaseImporter extends Importer<Object[]> {
 		IConverter[] converters = new IConverter[columns.size()];
 		for (int index = 0; index < columns.size(); index++) {
 			Column column = columns.get(index);
-			FieldDef fieldDef = spaceDef.getFieldDef(column.getField());
+			FieldDef fieldDef = spaceDef.getFieldDef(DatabaseCommon
+					.getFieldName(column));
 			accessors[index] = AccessorFactory.create(fieldDef);
 			converters[index] = converterFactory.getConverter(
 					config.getAttributes(), DatabaseCommon.getType(column),
@@ -255,11 +260,7 @@ public class DatabaseImporter extends Importer<Object[]> {
 	public void execute() throws TransferException {
 		try {
 			connection = DatabaseCommon.getConnection(database);
-		} catch (ClassNotFoundException e) {
-			String message = MessageFormat.format(
-					"Could not find driver ''{0}''", database.getDriver());
-			throw new TransferException(message, e);
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			throw new TransferException("Could not connect to database", e);
 		}
 		super.execute();

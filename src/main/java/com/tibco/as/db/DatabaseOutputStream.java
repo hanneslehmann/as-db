@@ -1,5 +1,6 @@
 package com.tibco.as.db;
 
+import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
@@ -10,9 +11,12 @@ import com.tibco.as.io.IOutputStream;
 public class DatabaseOutputStream implements IOutputStream<Object[]> {
 
 	private PreparedStatement statement;
+	private IPreparedStatementAccessor[] accessors;
 
-	public DatabaseOutputStream(PreparedStatement statement) {
+	public DatabaseOutputStream(PreparedStatement statement,
+			IPreparedStatementAccessor[] accessors) {
 		this.statement = statement;
+		this.accessors = accessors;
 	}
 
 	@Override
@@ -43,7 +47,11 @@ public class DatabaseOutputStream implements IOutputStream<Object[]> {
 			set(element);
 			statement.addBatch();
 		}
-		statement.executeBatch();
+		try {
+			statement.executeBatch();
+		} catch (BatchUpdateException e) {
+			throw e.getNextException();
+		}
 	}
 
 	@Override
@@ -54,7 +62,7 @@ public class DatabaseOutputStream implements IOutputStream<Object[]> {
 
 	private void set(Object[] element) throws SQLException {
 		for (int index = 0; index < element.length; index++) {
-			statement.setObject(index + 1, element[index]);
+			accessors[index].set(statement, element[index]);
 		}
 	}
 }

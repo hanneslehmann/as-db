@@ -1,11 +1,15 @@
 package com.tibco.as.db;
 
 import java.math.BigDecimal;
-import java.sql.Blob;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.Driver;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Time;
@@ -15,9 +19,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+
+import com.tibco.as.db.accessors.BlobAccessor;
+import com.tibco.as.db.accessors.DefaultAccessor;
+import com.tibco.as.space.FieldDef;
+import com.tibco.as.space.SpaceDef;
 
 public class DatabaseCommon {
 
@@ -45,17 +54,19 @@ public class DatabaseCommon {
 
 	private static final String KEY_SEQ = "KEY_SEQ";
 
+	private static final String TYPE_NAME = "TYPE_NAME";
+
 	private static final char QUOTE = '\"';
 
 	public static String getFullTableName(Table table) {
 		String namespace = "";
 		if (table.getCatalog() != null) {
-			namespace += table.getCatalog() + ".";
+			namespace += quote(table.getCatalog()) + ".";
 		}
 		if (table.getSchema() != null) {
-			namespace += table.getSchema() + ".";
+			namespace += quote(table.getSchema()) + ".";
 		}
-		return namespace + table.getName();
+		return namespace + quote(table.getName());
 	}
 
 	private static String quote(String name) {
@@ -66,9 +77,16 @@ public class DatabaseCommon {
 		List<Column> columns = table.getColumns();
 		String[] columnNames = new String[columns.size()];
 		for (int index = 0; index < columns.size(); index++) {
-			columnNames[index] = columns.get(index).getName();
+			columnNames[index] = getColumnName(columns.get(index));
 		}
 		return columnNames;
+	}
+
+	public static String getColumnName(Column column) {
+		if (column.getName() == null) {
+			return quote(column.getField());
+		}
+		return quote(column.getName());
 	}
 
 	public static String getCommaSeparated(String[] elements) {
@@ -83,10 +101,11 @@ public class DatabaseCommon {
 	}
 
 	private static Collection<Column> getColumns(Connection connection,
-			Table table, Column inputColumn) throws SQLException {
+			String catalog, String schema, String table, Column inputColumn)
+			throws SQLException {
 		Map<String, Short> keys = new HashMap<String, Short>();
-		ResultSet keyRS = connection.getMetaData().getPrimaryKeys(
-				table.getCatalog(), table.getSchema(), table.getName());
+		ResultSet keyRS = connection.getMetaData().getPrimaryKeys(catalog,
+				schema, table);
 		try {
 			while (keyRS.next()) {
 				String key = keyRS.getString(COLUMN_NAME);
@@ -97,21 +116,15 @@ public class DatabaseCommon {
 			keyRS.close();
 		}
 		Column[] columns = new Column[0];
-		ResultSet columnRS = connection.getMetaData().getColumns(
-				table.getCatalog(), table.getSchema(), table.getName(),
-				inputColumn.getName());
+		ResultSet columnRS = connection.getMetaData().getColumns(catalog,
+				schema, table, inputColumn.getName());
 		try {
 			while (columnRS.next()) {
-				String columnName = columnRS.getString(COLUMN_NAME);
 				Column column = new Column();
 				column.setDecimalDigits(columnRS.getInt(DECIMAL_DIGITS));
-				String fieldName = inputColumn.getField();
-				if (fieldName == null) {
-					fieldName = columnName;
-				}
-				column.setField(fieldName);
-				column.setKeySequence(keys.get(columnName));
-				column.setName(columnName);
+				column.setField(inputColumn.getField());
+				column.setKeySequence(keys.get(columnRS.getString(COLUMN_NAME)));
+				column.setName(columnRS.getString(COLUMN_NAME));
 				column.setNullable(columnRS.getBoolean(NULLABLE));
 				column.setRadix(columnRS.getInt(NUM_PREC_RADIX));
 				column.setSize(columnRS.getInt(COLUMN_SIZE));
@@ -129,9 +142,9 @@ public class DatabaseCommon {
 	}
 
 	public static Collection<String> getSchemas(Connection connection,
-			String catalog) throws SQLException {
+			String catalog, String schema) throws SQLException {
 		Collection<String> schemas = new ArrayList<String>();
-		ResultSet rs = connection.getMetaData().getSchemas(catalog, null);
+		ResultSet rs = connection.getMetaData().getSchemas(catalog, schema);
 		try {
 			while (rs.next()) {
 				schemas.add(rs.getString(TABLE_SCHEM));
@@ -156,35 +169,43 @@ public class DatabaseCommon {
 		return catalogs;
 	}
 
+	public static Collection<Table> getTables(Connection connection, Table table)
+			throws SQLException {
+		Collection<Table> tables = getTables(connection, table.getCatalog(),
+				table.getSchema(), table.getName(), getTypes(table));
+		for (Table t : tables) {
+			t.setBatchSize(table.getBatchSize());
+			t.setDistributionRole(table.getDistributionRole());
+			t.setFetchSize(table.getFetchSize());
+			t.setSpace(table.getSpace());
+			t.setSql(table.getSql());
+			for (Column column : getColumns(table.getColumns())) {
+				t.getColumns().addAll(
+						DatabaseCommon.getColumns(connection, t.getCatalog(),
+								t.getSchema(), t.getName(), column));
+			}
+		}
+		return tables;
+	}
+
+	public static String[] getTypes(Table table) {
+		return new String[] { table.getType().name() };
+	}
+
 	public static Collection<Table> getTables(Connection connection,
-			Table inputTable) throws SQLException {
+			String catalog, String schema, String name, String[] types)
+			throws SQLException {
 		Collection<Table> tables = new ArrayList<Table>();
-		ResultSet rs = connection.getMetaData().getTables(
-				inputTable.getCatalog(), inputTable.getSchema(),
-				inputTable.getName(),
-				new String[] { inputTable.getType().name() });
+		ResultSet rs = connection.getMetaData().getTables(catalog, schema,
+				name, types);
 		try {
 			while (rs.next()) {
 				Table table = new Table();
-				table.setBatchSize(inputTable.getBatchSize());
 				table.setCatalog(rs.getString(TABLE_CAT));
-				table.setDistributionRole(inputTable.getDistributionRole());
-				table.setFetchSize(inputTable.getFetchSize());
 				String tableName = rs.getString(TABLE_NAME);
 				table.setName(tableName);
 				table.setSchema(rs.getString(TABLE_SCHEM));
-				String spaceName = inputTable.getSpace();
-				if (spaceName == null) {
-					spaceName = tableName;
-				}
-				table.setSpace(spaceName);
-				table.setSql(inputTable.getSql());
 				table.setType(TableType.valueOf(rs.getString(TABLE_TYPE)));
-				for (Column column : getColumns(inputTable.getColumns())) {
-					table.getColumns().addAll(
-							DatabaseCommon
-									.getColumns(connection, table, column));
-				}
 				tables.add(table);
 			}
 		} finally {
@@ -237,27 +258,95 @@ public class DatabaseCommon {
 		case Types.CLOB:
 			return Clob.class;
 		case Types.BLOB:
-			return Blob.class;
+			return byte[].class;
 		default:
 			return Object.class;
 		}
 	}
 
-	public static Map<String, Table> getTableMap(Connection connection,
-			Table inputTable) throws SQLException {
-		Map<String, Table> map = new LinkedHashMap<String, Table>();
-		for (Table table : getTables(connection, inputTable)) {
-			map.put(getFullTableName(table), table);
-		}
-		return map;
-	}
-
+	@SuppressWarnings("unchecked")
 	public static Connection getConnection(Database database)
-			throws ClassNotFoundException, SQLException {
-		Class.forName(database.getDriver());
-		Connection connection = DriverManager.getConnection(database.getUrl(),
-				database.getUser(), database.getPassword());
-		connection.setAutoCommit(true);
+			throws ClassNotFoundException, SQLException,
+			InstantiationException, IllegalAccessException,
+			MalformedURLException {
+		Connection connection;
+		if (database.getDriver() == null) {
+			connection = DriverManager.getConnection(database.getUrl(),
+					database.getUser(), database.getPassword());
+		} else {
+			Class<Driver> driverClass;
+			if (database.getJar() == null) {
+				driverClass = (Class<Driver>) Class.forName(database
+						.getDriver());
+			} else {
+				URLClassLoader classLoader;
+				URL url = new URL("file://" + database.getJar());
+				classLoader = URLClassLoader.newInstance(new URL[] { url });
+				driverClass = (Class<Driver>) classLoader.loadClass(database
+						.getDriver());
+			}
+			Driver driver = driverClass.newInstance();
+			Properties props = new Properties();
+			if (database.getUser() != null) {
+				props.put("user", database.getUser());
+			}
+			if (database.getPassword() != null) {
+				props.put("password", database.getPassword());
+			}
+			connection = driver.connect(database.getUrl(), props);
+		}
 		return connection;
 	}
+
+	public static Map<Integer, String> getTypeInfo(Connection connection)
+			throws SQLException {
+		Map<Integer, String> types = new HashMap<Integer, String>();
+		ResultSet typeRS = connection.getMetaData().getTypeInfo();
+		while (typeRS.next()) {
+			String typeName = typeRS.getString(TYPE_NAME);
+			Integer dataType = typeRS.getInt(DATA_TYPE);
+			types.put(dataType, typeName);
+		}
+		return types;
+	}
+
+	public static String getFieldName(Column column) {
+		if (column.getField() == null) {
+			return column.getName();
+		}
+		return column.getField();
+	}
+
+	public static FieldDef getFieldDef(SpaceDef spaceDef, Column column) {
+		String fieldName = DatabaseCommon.getFieldName(column);
+		for (FieldDef fieldDef : spaceDef.getFieldDefs()) {
+			if (fieldDef.getName().equalsIgnoreCase(fieldName)) {
+				return fieldDef;
+			}
+		}
+		return null;
+	}
+
+	public static IPreparedStatementAccessor[] getAccessors(Table table,
+			PreparedStatement statement) {
+		IPreparedStatementAccessor[] accessors = new IPreparedStatementAccessor[table
+				.getColumns().size()];
+		for (int index = 0; index < accessors.length; index++) {
+			Column column = table.getColumns().get(index);
+			accessors[index] = getAccessor(statement, index + 1, column
+					.getType().getType());
+		}
+		return accessors;
+	}
+
+	private static IPreparedStatementAccessor getAccessor(
+			PreparedStatement statement, int index, int type) {
+		switch (type) {
+		case Types.BLOB:
+			return new BlobAccessor(index);
+		default:
+			return new DefaultAccessor(index, type);
+		}
+	}
+
 }

@@ -9,6 +9,7 @@
         maxOccurs="unbounded" />
     </xsd:sequence>
     <xsd:attribute name="driver" type="xsd:string" />
+    <xsd:attribute name="jar" type="xsd:string" />
     <xsd:attribute name="url" type="xsd:string" />
     <xsd:attribute name="user" type="xsd:string" />
     <xsd:attribute name="password" type="xsd:string" />
