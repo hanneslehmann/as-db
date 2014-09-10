@@ -11,16 +11,17 @@ import com.tibco.as.io.IInputStream;
 public class DatabaseInputStream implements IInputStream<Object[]> {
 
 	private ResultSet resultSet;
+	private IPreparedStatementAccessor[] accessors;
 	private long position;
-	private int columnCount;
 
-	public DatabaseInputStream(ResultSet resultSet) {
+	public DatabaseInputStream(ResultSet resultSet,
+			IPreparedStatementAccessor[] accessors) {
 		this.resultSet = resultSet;
+		this.accessors = accessors;
 	}
 
 	@Override
 	public void open() throws SQLException {
-		this.columnCount = resultSet.getMetaData().getColumnCount();
 	}
 
 	@Override
@@ -31,9 +32,9 @@ public class DatabaseInputStream implements IInputStream<Object[]> {
 	@Override
 	public Object[] read() throws SQLException {
 		if (resultSet.next()) {
-			Object[] result = new Object[columnCount];
-			for (int index = 0; index < columnCount; index++) {
-				result[index] = resultSet.getObject(index + 1);
+			Object[] result = new Object[accessors.length];
+			for (int index = 0; index < accessors.length; index++) {
+				result[index] = accessors[index].get(resultSet);
 			}
 			position++;
 			return result;

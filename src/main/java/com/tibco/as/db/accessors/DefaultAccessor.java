@@ -1,6 +1,7 @@
 package com.tibco.as.db.accessors;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.tibco.as.db.IPreparedStatementAccessor;
@@ -19,6 +20,11 @@ public class DefaultAccessor implements IPreparedStatementAccessor {
 	public void set(PreparedStatement statement, Object value)
 			throws SQLException {
 		statement.setObject(index, value, sqlType);
+	}
+
+	@Override
+	public Object get(ResultSet resultSet) throws SQLException {
+		return resultSet.getObject(index);
 	}
 
 }

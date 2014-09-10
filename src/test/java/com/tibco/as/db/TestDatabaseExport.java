@@ -32,27 +32,27 @@ public class TestDatabaseExport extends TestBase {
 
 	private static final int SIZE = 100;
 
-	protected static final String SPACE_NAME = "MySpace";
+	public static final String SPACE_NAME = "MySpace";
 
-	protected static final String FIELD_NAME1 = "field1";
+	public static final String FIELD_NAME1 = "field1";
 
-	protected static final String FIELD_NAME2 = "field2";
+	public static final String FIELD_NAME2 = "field2";
 
-	protected static final String FIELD_NAME3 = "field3";
+	public static final String FIELD_NAME3 = "field3";
 
-	protected static final String FIELD_NAME4 = "field4";
+	public static final String FIELD_NAME4 = "field4";
 
-	protected static final String FIELD_NAME5 = "field5";
+	public static final String FIELD_NAME5 = "field5";
 
-	protected static final String FIELD_NAME6 = "field6";
+	public static final String FIELD_NAME6 = "field6";
 
-	protected static final String FIELD_NAME7 = "field7";
+	public static final String FIELD_NAME7 = "field7";
 
-	protected static final String FIELD_NAME8 = "field8";
+	public static final String FIELD_NAME8 = "field8";
 
-	protected static final String FIELD_NAME9 = "field9";
+	public static final String FIELD_NAME9 = "field9";
 
-	protected static final String FIELD_NAME10 = "field10";
+	public static final String FIELD_NAME10 = "field10";
 
 	protected static final FieldDef FIELD1 = FieldDef.create(FIELD_NAME1,
 			FieldType.LONG).setNullable(false);

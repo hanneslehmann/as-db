@@ -174,6 +174,9 @@ public class DatabaseImporter extends AbstractImporter<Object[]> {
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws TransferException {
 		DatabaseImport config = (DatabaseImport) transfer;
-		return new DatabaseInputStream(resultSets.get(config.getTable()));
+		Table table = config.getTable();
+		ResultSet resultSet = resultSets.get(table);
+		IPreparedStatementAccessor[] accessors = connection.getAccessors(table);
+		return new DatabaseInputStream(resultSet, accessors);
 	}
 }
