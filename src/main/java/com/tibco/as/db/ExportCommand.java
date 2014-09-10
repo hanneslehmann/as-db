@@ -10,7 +10,7 @@ import com.tibco.as.io.cli.AbstractCommandExport;
 import com.tibco.as.space.Metaspace;
 
 @Parameters(commandNames = "export", commandDescription = "Export tables")
-public class DatabaseExportCommand extends AbstractCommandExport {
+public class ExportCommand extends AbstractCommandExport {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -18,9 +18,9 @@ public class DatabaseExportCommand extends AbstractCommandExport {
 	@Parameter(names = { "-schema" }, description = "Schema name")
 	private String schema;
 
-	private DatabaseApplication application;
+	private Application application;
 
-	public DatabaseExportCommand(DatabaseApplication application) {
+	public ExportCommand(Application application) {
 		this.application = application;
 	}
 
@@ -36,8 +36,8 @@ public class DatabaseExportCommand extends AbstractCommandExport {
 			table.setSpace(spaceName);
 			database.getTables().add(table);
 		}
-		DatabaseExporter exporter = new DatabaseExporter(metaspace, database);
-		DatabaseExport transfer = new DatabaseExport();
+		Exporter exporter = new Exporter(metaspace, database);
+		Export transfer = new Export();
 		configure(transfer);
 		exporter.setDefaultTransfer(transfer);
 		transfers.add(exporter);

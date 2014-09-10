@@ -8,13 +8,13 @@ import java.text.MessageFormat;
 import com.tibco.as.io.EventManager;
 import com.tibco.as.io.IInputStream;
 
-public class DatabaseInputStream implements IInputStream<Object[]> {
+public class InputStream implements IInputStream<Object[]> {
 
 	private ResultSet resultSet;
 	private IPreparedStatementAccessor[] accessors;
 	private long position;
 
-	public DatabaseInputStream(ResultSet resultSet,
+	public InputStream(ResultSet resultSet,
 			IPreparedStatementAccessor[] accessors) {
 		this.resultSet = resultSet;
 		this.accessors = accessors;

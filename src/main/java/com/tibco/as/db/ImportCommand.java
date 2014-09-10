@@ -11,7 +11,7 @@ import com.tibco.as.io.cli.AbstractCommandImport;
 import com.tibco.as.space.Metaspace;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
-public class DatabaseImportCommand extends AbstractCommandImport {
+public class ImportCommand extends AbstractCommandImport {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -31,9 +31,9 @@ public class DatabaseImportCommand extends AbstractCommandImport {
 	@Parameter(names = { "-type" }, description = "Table type", converter = TableTypeConverter.class, validateWith = TableTypeConverter.class)
 	private TableType tableType;
 
-	private DatabaseApplication application;
+	private Application application;
 
-	public DatabaseImportCommand(DatabaseApplication application) {
+	public ImportCommand(Application application) {
 		this.application = application;
 	}
 
@@ -52,8 +52,8 @@ public class DatabaseImportCommand extends AbstractCommandImport {
 			table.setType(tableType);
 			database.getTables().add(table);
 		}
-		DatabaseImporter importer = new DatabaseImporter(metaspace, database);
-		DatabaseImport transfer = new DatabaseImport();
+		Importer importer = new Importer(metaspace, database);
+		Import transfer = new Import();
 		configure(transfer);
 		importer.setDefaultTransfer(transfer);
 		transfers.add(importer);

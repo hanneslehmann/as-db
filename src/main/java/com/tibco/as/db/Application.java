@@ -4,7 +4,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.tibco.as.io.cli.AbstractApplication;
 
-public class DatabaseApplication extends AbstractApplication {
+public class Application extends AbstractApplication {
 
 	@Parameter(names = { "-driver" }, description = "Database driver class name")
 	private String driver;
@@ -18,7 +18,7 @@ public class DatabaseApplication extends AbstractApplication {
 	private String jar;
 
 	public static void main(String[] args) throws Exception {
-		new DatabaseApplication().execute(args);
+		new Application().execute(args);
 	}
 
 	public Database getDatabase() {
@@ -34,8 +34,8 @@ public class DatabaseApplication extends AbstractApplication {
 
 	@Override
 	protected void addCommands(JCommander jc) {
-		jc.addCommand(new DatabaseImportCommand(this));
-		jc.addCommand(new DatabaseExportCommand(this));
+		jc.addCommand(new ImportCommand(this));
+		jc.addCommand(new ExportCommand(this));
 	}
 
 	@Override

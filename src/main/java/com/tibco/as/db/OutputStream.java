@@ -8,12 +8,12 @@ import java.util.List;
 import com.tibco.as.io.EventManager;
 import com.tibco.as.io.IOutputStream;
 
-public class DatabaseOutputStream implements IOutputStream<Object[]> {
+public class OutputStream implements IOutputStream<Object[]> {
 
 	private PreparedStatement statement;
 	private IPreparedStatementAccessor[] accessors;
 
-	public DatabaseOutputStream(PreparedStatement statement,
+	public OutputStream(PreparedStatement statement,
 			IPreparedStatementAccessor[] accessors) {
 		this.statement = statement;
 		this.accessors = accessors;

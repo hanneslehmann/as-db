@@ -65,8 +65,8 @@ public class TestDatabaseImport extends TestBase {
 		Database db = new Database();
 		db.setDriver(DRIVER);
 		db.setUrl(URL);
-		DatabaseImporter importer = new DatabaseImporter(metaspace, db);
-		DatabaseImport import1 = new DatabaseImport();
+		Importer importer = new Importer(metaspace, db);
+		Import import1 = new Import();
 		import1.setDistributionRole(DistributionRole.SEEDER);
 		importer.setDefaultTransfer(import1);
 		importer.execute();

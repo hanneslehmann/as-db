@@ -22,7 +22,7 @@ import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
 
-public class DatabaseExporter extends AbstractExporter<Object[]> {
+public class Exporter extends AbstractExporter<Object[]> {
 
 	private ConverterFactory converterFactory = new ConverterFactory();
 
@@ -32,7 +32,7 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 
 	private DatabaseConnection connection;
 
-	public DatabaseExporter(Metaspace metaspace, Database database) {
+	public Exporter(Metaspace metaspace, Database database) {
 		super(metaspace);
 		this.database = database;
 	}
@@ -44,7 +44,7 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 		}
 		Collection<AbstractTransfer> exports = new ArrayList<AbstractTransfer>();
 		for (Table table : database.getTables()) {
-			DatabaseExport export = (DatabaseExport) getDefaultTransfer();
+			Export export = (Export) getDefaultTransfer();
 			export.setTable(table);
 			exports.add(export);
 		}
@@ -52,8 +52,8 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 	}
 
 	@Override
-	protected DatabaseExport createTransfer() {
-		return new DatabaseExport();
+	protected Export createTransfer() {
+		return new Export();
 	}
 
 	@Override
@@ -87,7 +87,7 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 	protected IConverter<Tuple, Object[]> getConverter(
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws UnsupportedConversionException {
-		DatabaseExport export = (DatabaseExport) transfer;
+		Export export = (Export) transfer;
 		List<Column> columns = export.getTable().getColumns();
 		ITupleAccessor[] accessors = new ITupleAccessor[columns.size()];
 		IConverter[] converters = new IConverter[columns.size()];
@@ -107,7 +107,7 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 	protected IOutputStream<Object[]> getOutputStream(Metaspace metaspace,
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws TransferException {
-		DatabaseExport export = (DatabaseExport) transfer;
+		Export export = (Export) transfer;
 		Table table = export.getTable();
 		if (table.getCatalog() == null && table.getSchema() == null) {
 			table.setSchema(metaspace.getName());
@@ -180,7 +180,7 @@ public class DatabaseExporter extends AbstractExporter<Object[]> {
 			throw new TransferException("Could not prepare statement", e);
 		}
 		IPreparedStatementAccessor[] accessors = connection.getAccessors(table);
-		return new DatabaseOutputStream(statement, accessors);
+		return new OutputStream(statement, accessors);
 	}
 
 	public Connection getConnection() {

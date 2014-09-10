@@ -2,7 +2,7 @@ package com.tibco.as.db;
 
 import com.tibco.as.io.AbstractExport;
 
-public class DatabaseExport extends AbstractExport {
+public class Export extends AbstractExport {
 
 	private Table table = new Table();
 
@@ -15,13 +15,13 @@ public class DatabaseExport extends AbstractExport {
 	}
 
 	@Override
-	public DatabaseExport clone() {
-		DatabaseExport export = new DatabaseExport();
+	public Export clone() {
+		Export export = new Export();
 		copyTo(export);
 		return export;
 	}
 
-	public void copyTo(DatabaseExport export) {
+	public void copyTo(Export export) {
 		export.table = table;
 		super.copyTo(export);
 	}

@@ -97,7 +97,7 @@ public class TestDatabaseExport extends TestBase {
 		db.setDriver(DRIVER);
 		db.setUrl(URL);
 		Metaspace metaspace = getMetaspace();
-		DatabaseExporter exporter = new DatabaseExporter(metaspace, db);
+		Exporter exporter = new Exporter(metaspace, db);
 		exporter.setDoNotCloseConnection(true);
 		exporter.execute();
 		Connection conn = getConnection();

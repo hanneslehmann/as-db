@@ -3,7 +3,7 @@ package com.tibco.as.db;
 import com.tibco.as.io.AbstractImport;
 import com.tibco.as.space.Member.DistributionRole;
 
-public class DatabaseImport extends AbstractImport {
+public class Import extends AbstractImport {
 
 	private Table table = new Table();
 
@@ -46,13 +46,13 @@ public class DatabaseImport extends AbstractImport {
 	}
 
 	@Override
-	public DatabaseImport clone() {
-		DatabaseImport result = new DatabaseImport();
+	public Import clone() {
+		Import result = new Import();
 		copyTo(result);
 		return result;
 	}
 
-	public void copyTo(DatabaseImport target) {
+	public void copyTo(Import target) {
 		target.table = table;
 		super.copyTo(target);
 	}
