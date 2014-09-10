@@ -1,11 +1,11 @@
 package com.tibco.as.db;
 
-import com.tibco.as.io.Import;
+import com.tibco.as.io.AbstractImport;
 import com.tibco.as.space.Member.DistributionRole;
 
-public class DatabaseImport extends Import {
+public class DatabaseImport extends AbstractImport {
 
-	private Table table;
+	private Table table = new Table();
 
 	public Table getTable() {
 		return table;

@@ -103,8 +103,8 @@ public class TestDatabaseExport extends TestBase {
 		Connection conn = getConnection();
 		Statement stat = conn.createStatement();
 		ResultSet resultSet = stat.executeQuery(MessageFormat.format(
-				"select * from \"{0}\".\"{1}\" order by \"{2}\"", metaspace.getName(),
-				SPACE_NAME, FIELD_NAME1));
+				"select * from \"{0}\".\"{1}\" order by \"{2}\"",
+				metaspace.getName(), SPACE_NAME, FIELD_NAME1));
 		long index = 1;
 		while (resultSet.next()) {
 			Assert.assertEquals(space.getSpaceDef().getFieldDefs().size(),
@@ -145,6 +145,7 @@ public class TestDatabaseExport extends TestBase {
 		String sql = "CREATE TABLE ms.MySpace (field1 BIGINT not null, field2 VARCHAR not null, field3 TIMESTAMP null, field4 BLOB null, field5 BOOLEAN null, field6 CHAR null, field7 DOUBLE PRECISION null, field8 FLOAT null, field9 INTEGER null, field10 SMALLINT null, Primary Key (field1,field2))";
 		statement.execute(sql);
 		testExportDatabase();
+		connection.close();
 	}
 
 	protected Tuple createTuple(int id) {

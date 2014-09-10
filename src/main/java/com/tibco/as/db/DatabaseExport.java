@@ -1,10 +1,10 @@
 package com.tibco.as.db;
 
-import com.tibco.as.io.Export;
+import com.tibco.as.io.AbstractExport;
 
-public class DatabaseExport extends Export {
+public class DatabaseExport extends AbstractExport {
 
-	private Table table;
+	private Table table = new Table();
 
 	public Table getTable() {
 		return table;
