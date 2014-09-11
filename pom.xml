@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.tibco.as</groupId>
   <artifactId>as-db</artifactId>
-  <version>2.0.4-SNAPSHOT</version>
+  <version>2.0.3</version>
   <packaging>bundle</packaging>
   <name>AS DB</name>
   <description>Database import/export tool for TIBCO ActiveSpaces</description>
