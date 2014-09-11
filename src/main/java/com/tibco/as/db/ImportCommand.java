@@ -22,7 +22,7 @@ public class ImportCommand extends AbstractCommandImport {
 	@Parameter(description = "The list of tables to import")
 	private List<String> tableNames = new ArrayList<String>();
 
-	@Parameter(names = { "-fetch-size" }, description = "Fetch size")
+	@Parameter(names = { "-fetch_size" }, description = "Fetch size")
 	private Integer fetchSize;
 
 	@Parameter(names = { "-sql" }, description = "SQL query")
