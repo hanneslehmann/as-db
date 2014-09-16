@@ -25,7 +25,7 @@ import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
 
-public class Importer extends AbstractImporter<Object[]> {
+public class DatabaseImporter extends AbstractImporter<Object[]> {
 
 	private ConverterFactory converterFactory = new ConverterFactory();
 	private Database database;
@@ -33,7 +33,7 @@ public class Importer extends AbstractImporter<Object[]> {
 
 	private DatabaseConnection connection;
 
-	public Importer(Metaspace metaspace, Database database) {
+	public DatabaseImporter(Metaspace metaspace, Database database) {
 		super(metaspace);
 		this.database = database;
 	}
@@ -44,8 +44,8 @@ public class Importer extends AbstractImporter<Object[]> {
 	}
 
 	@Override
-	protected Import createTransfer() {
-		return new Import();
+	protected DatabaseImport createTransfer() {
+		return new DatabaseImport();
 	}
 
 	@Override
@@ -67,7 +67,7 @@ public class Importer extends AbstractImporter<Object[]> {
 		database.getTables().clear();
 		database.getTables().addAll(tables);
 		for (Table table : tables) {
-			Import config = (Import) getDefaultTransfer()
+			DatabaseImport config = (DatabaseImport) getDefaultTransfer()
 					.clone();
 			config.setTable(table);
 			imports.add(config);
@@ -84,7 +84,7 @@ public class Importer extends AbstractImporter<Object[]> {
 
 	@Override
 	public SpaceDef getSpaceDef(AbstractTransfer transfer) throws Exception {
-		Import config = (Import) transfer;
+		DatabaseImport config = (DatabaseImport) transfer;
 		Table table = config.getTable();
 		ResultSet resultSet = connection.select(table);
 		resultSets.put(table, resultSet);
@@ -109,12 +109,12 @@ public class Importer extends AbstractImporter<Object[]> {
 
 	@Override
 	protected void populateSpaceDef(SpaceDef spaceDef, AbstractImport transfer)
-			throws SQLException {
-		Import config = (Import) transfer;
+			throws SQLException, UnsupportedJDBCTypeException {
+		DatabaseImport config = (DatabaseImport) transfer;
 		String[] keys = new String[0];
 		for (Column column : config.getTable().getColumns()) {
 			String fieldName = column.getField();
-			FieldType fieldType = connection.getFieldType(column);
+			FieldType fieldType = connection.getFieldType(column.getType());
 			FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
 			fieldDef.setNullable(Boolean.TRUE.equals(column.isNullable()));
 			Short keySequence = column.getKeySequence();
@@ -131,7 +131,7 @@ public class Importer extends AbstractImporter<Object[]> {
 
 	@Override
 	protected String getInputSpaceName(AbstractImport config) {
-		return ((Import) config).getSpaceName();
+		return ((DatabaseImport) config).getSpaceName();
 	}
 
 	@Override
@@ -139,7 +139,7 @@ public class Importer extends AbstractImporter<Object[]> {
 	protected IConverter<Object[], Tuple> getConverter(
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws UnsupportedConversionException {
-		Import config = (Import) transfer;
+		DatabaseImport config = (DatabaseImport) transfer;
 		List<Column> columns = config.getTable().getColumns();
 		ITupleAccessor[] accessors = new ITupleAccessor[columns.size()];
 		IConverter[] converters = new IConverter[columns.size()];
@@ -156,8 +156,9 @@ public class Importer extends AbstractImporter<Object[]> {
 
 	@Override
 	public void execute() throws TransferException {
+		connection = new DatabaseConnection(database);
 		try {
-			connection = new DatabaseConnection(database);
+			connection.open();
 		} catch (Exception e) {
 			throw new TransferException("Could not connect to database", e);
 		}
@@ -173,7 +174,7 @@ public class Importer extends AbstractImporter<Object[]> {
 	protected InputStream getInputStream(Metaspace metaspace,
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws TransferException {
-		Import config = (Import) transfer;
+		DatabaseImport config = (DatabaseImport) transfer;
 		Table table = config.getTable();
 		ResultSet resultSet = resultSets.get(table);
 		IPreparedStatementAccessor[] accessors = connection.getAccessors(table);

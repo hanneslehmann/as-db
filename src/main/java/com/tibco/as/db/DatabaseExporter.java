@@ -22,17 +22,17 @@ import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
 
-public class Exporter extends AbstractExporter<Object[]> {
+public class DatabaseExporter extends AbstractExporter<Object[]> {
 
 	private ConverterFactory converterFactory = new ConverterFactory();
 
 	private Database database;
 
-	private boolean doNotCloseConnection;
+	private boolean keepConnectionOpen;
 
 	private DatabaseConnection connection;
 
-	public Exporter(Metaspace metaspace, Database database) {
+	public DatabaseExporter(Metaspace metaspace, Database database) {
 		super(metaspace);
 		this.database = database;
 	}
@@ -44,7 +44,7 @@ public class Exporter extends AbstractExporter<Object[]> {
 		}
 		Collection<AbstractTransfer> exports = new ArrayList<AbstractTransfer>();
 		for (Table table : database.getTables()) {
-			Export export = (Export) getDefaultTransfer();
+			DatabaseExport export = (DatabaseExport) getDefaultTransfer();
 			export.setTable(table);
 			exports.add(export);
 		}
@@ -52,34 +52,39 @@ public class Exporter extends AbstractExporter<Object[]> {
 	}
 
 	@Override
-	protected Export createTransfer() {
-		return new Export();
+	protected DatabaseExport createTransfer() {
+		return new DatabaseExport();
 	}
 
 	@Override
 	public void execute() throws TransferException {
+		connection = new DatabaseConnection(database);
 		try {
-			connection = new DatabaseConnection(database);
+			connection.open();
 		} catch (Exception e) {
 			throw new TransferException("Could not connect to database", e);
 		}
 		super.execute();
-		if (doNotCloseConnection) {
+		if (keepConnectionOpen) {
 			return;
 		}
 		try {
-			connection.close();
+			close();
 		} catch (SQLException e) {
 			throw new TransferException("Could not close connection", e);
 		}
 	}
 
-	public boolean isDoNotCloseConnection() {
-		return doNotCloseConnection;
+	public void close() throws SQLException {
+		connection.close();
 	}
 
-	public void setDoNotCloseConnection(boolean doNotCloseConnection) {
-		this.doNotCloseConnection = doNotCloseConnection;
+	public boolean isKeepConnectionOpen() {
+		return keepConnectionOpen;
+	}
+
+	public void setKeepConnectionOpen(boolean keepConnectionOpen) {
+		this.keepConnectionOpen = keepConnectionOpen;
 	}
 
 	@Override
@@ -87,7 +92,7 @@ public class Exporter extends AbstractExporter<Object[]> {
 	protected IConverter<Tuple, Object[]> getConverter(
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws UnsupportedConversionException {
-		Export export = (Export) transfer;
+		DatabaseExport export = (DatabaseExport) transfer;
 		List<Column> columns = export.getTable().getColumns();
 		ITupleAccessor[] accessors = new ITupleAccessor[columns.size()];
 		IConverter[] converters = new IConverter[columns.size()];
@@ -107,7 +112,7 @@ public class Exporter extends AbstractExporter<Object[]> {
 	protected IOutputStream<Object[]> getOutputStream(Metaspace metaspace,
 			AbstractTransfer transfer, SpaceDef spaceDef)
 			throws TransferException {
-		Export export = (Export) transfer;
+		DatabaseExport export = (DatabaseExport) transfer;
 		Table table = export.getTable();
 		if (table.getCatalog() == null && table.getSchema() == null) {
 			table.setSchema(metaspace.getName());
@@ -154,7 +159,10 @@ public class Exporter extends AbstractExporter<Object[]> {
 				continue;
 			}
 			if (column.getType() == null) {
-				column.setType(connection.getJDBCType(fieldDef.getType()));
+				column.setType(connection.getColumnType(fieldDef.getType()));
+			}
+			if (column.getSize() == null) {
+				column.setSize(connection.getSize(fieldDef.getType()));
 			}
 			if (column.isNullable() == null) {
 				column.setNullable(fieldDef.isNullable());

@@ -1,7 +1,7 @@
 package com.tibco.as.db;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Clob;
@@ -28,7 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.tibco.as.accessors.AccessorFactory;
+import javax.xml.bind.JAXB;
+
 import com.tibco.as.db.accessors.BlobAccessor;
 import com.tibco.as.db.accessors.DefaultAccessor;
 import com.tibco.as.space.FieldDef.FieldType;
@@ -64,11 +65,17 @@ public class DatabaseConnection {
 
 	private static final char QUOTE = '\"';
 
+	private Database database;
+
 	private Connection connection;
 
-	public DatabaseConnection(Database database) throws ClassNotFoundException,
-			SQLException, InstantiationException, IllegalAccessException,
-			MalformedURLException {
+	private TypeMappings typeMappings;
+
+	public DatabaseConnection(Database database) {
+		this.database = database;
+	}
+
+	public void open() throws Exception {
 		if (database.getDriver() == null) {
 			connection = DriverManager.getConnection(database.getUrl(),
 					database.getUser(), database.getPassword());
@@ -94,6 +101,9 @@ public class DatabaseConnection {
 			}
 			connection = driver.connect(database.getUrl(), props);
 		}
+		InputStream in = getClass().getClassLoader().getResourceAsStream(
+				"types.xml");
+		typeMappings = JAXB.unmarshal(in, TypeMappings.class);
 	}
 
 	public String getFullyQualifiedName(Table table) {
@@ -264,29 +274,13 @@ public class DatabaseConnection {
 		return names;
 	}
 
-	public JDBCType getJDBCType(FieldType type) {
-		switch (type) {
-		case BLOB:
-			return JDBCType.BLOB;
-		case BOOLEAN:
-			return JDBCType.BOOLEAN;
-		case CHAR:
-			return JDBCType.CHAR;
-		case DATETIME:
-			return JDBCType.TIMESTAMP;
-		case DOUBLE:
-			return JDBCType.DOUBLE;
-		case FLOAT:
-			return JDBCType.FLOAT;
-		case INTEGER:
-			return JDBCType.INTEGER;
-		case LONG:
-			return JDBCType.BIGINT;
-		case SHORT:
-			return JDBCType.SMALLINT;
-		default:
-			return JDBCType.VARCHAR;
+	public JDBCType getColumnType(FieldType type) {
+		for (FieldTypeMapping mapping : getTypeMappings().getField()) {
+			if (mapping.getType() == type) {
+				return mapping.getDataType();
+			}
 		}
+		return JDBCType.VARCHAR;
 	}
 
 	public Class getType(JDBCType type) {
@@ -401,6 +395,16 @@ public class DatabaseConnection {
 			JDBCType type = column.getType();
 			String typeName = type.getName();
 			query += columnName + " " + typeName;
+			Integer size = column.getSize();
+			if (!isNull(size)) {
+				query += "(";
+				query += size;
+				Integer decimalDigits = column.getDecimalDigits();
+				if (!isNull(decimalDigits)) {
+					query += "," + decimalDigits;
+				}
+				query += ")";
+			}
 			if (!Boolean.TRUE.equals(column.isNullable())) {
 				query += " not";
 			}
@@ -423,6 +427,10 @@ public class DatabaseConnection {
 		query += ")"; // close primary key constraint
 		query += ")"; // close table def
 		return query;
+	}
+
+	private boolean isNull(Integer size) {
+		return size == null || size == 0;
 	}
 
 	public void create(Table table) throws SQLException {
@@ -455,101 +463,45 @@ public class DatabaseConnection {
 		return prepare(sql);
 	}
 
-	public FieldType getFieldType(JDBCType type, int size, int decimalDigits) {
-		switch (type) {
-		case BIGINT:
-			return FieldType.LONG;
-		case BIT:
-			return FieldType.BOOLEAN;
-		case BLOB:
-			return FieldType.BLOB;
-		case BOOLEAN:
-			return FieldType.BOOLEAN;
-		case CHAR:
-			return getStringFieldType(size);
-		case CLOB:
-			return getStringFieldType(size);
-		case DATE:
-			return FieldType.DATETIME;
-		case DECIMAL:
-			return getNumericalFieldType(size, decimalDigits);
-		case DOUBLE:
-			return FieldType.DOUBLE;
-		case FLOAT:
-			return FieldType.FLOAT;
-		case INTEGER:
-			return FieldType.INTEGER;
-		case LONGNVARCHAR:
-			return getStringFieldType(size);
-		case LONGVARBINARY:
-			return FieldType.BLOB;
-		case LONGVARCHAR:
-			return getStringFieldType(size);
-		case NCHAR:
-			return getStringFieldType(size);
-		case NCLOB:
-			return getStringFieldType(size);
-		case NUMERIC:
-			return getNumericalFieldType(size, decimalDigits);
-		case NVARCHAR:
-			return getStringFieldType(size);
-		case REAL:
-			return getNumericalFieldType(size, decimalDigits);
-		case SMALLINT:
-			return FieldType.SHORT;
-		case SQLXML:
-			return getStringFieldType(size);
-		case TIME:
-			return FieldType.DATETIME;
-		case TIMESTAMP:
-			return FieldType.DATETIME;
-		case TINYINT:
-			return FieldType.SHORT;
-		case VARBINARY:
-			return FieldType.BLOB;
-		case VARCHAR:
-			return getStringFieldType(size);
-		default:
-			return FieldType.STRING;
-		}
-	}
-
-	private FieldType getStringFieldType(int size) {
-		if (size == 1) {
-			return FieldType.CHAR;
-		}
-		return FieldType.STRING;
-	}
-
-	private FieldType getNumericalFieldType(int size, int decimalDigits) {
-		if (decimalDigits == 0) {
-			if (size > AccessorFactory.INTEGER_SIZE) {
-				return FieldType.LONG;
+	public FieldType getFieldType(JDBCType type)
+			throws UnsupportedJDBCTypeException {
+		for (ColumnTypeMapping mapping : getTypeMappings().getColumn()) {
+			if (mapping.getType() == type) {
+				return mapping.getFieldType();
 			}
-			if (size > AccessorFactory.SHORT_SIZE) {
-				return FieldType.INTEGER;
-			}
-			return FieldType.SHORT;
 		}
-		if (size > AccessorFactory.FLOAT_SIZE) {
-			return FieldType.DOUBLE;
-		}
-		return FieldType.FLOAT;
+		throw new UnsupportedJDBCTypeException(type.name());
 	}
 
-	public FieldType getFieldType(Column column) {
-		JDBCType type = column.getType();
-		int size = getInt(column.getSize());
-		int decimalDigits = getInt(column.getDecimalDigits());
-		return getFieldType(type, size, decimalDigits);
-	}
-
-	private int getInt(Integer integer) {
-		if (integer == null) {
-			return 0;
-		}
-		return integer;
-	}
+	// private FieldType getStringFieldType(int size) {
+	// if (size == 1) {
+	// return FieldType.CHAR;
+	// }
+	// return FieldType.STRING;
+	// }
+	//
+	// private FieldType getNumericalFieldType(int size, int decimalDigits) {
+	// if (decimalDigits == 0) {
+	// if (size > AccessorFactory.INTEGER_SIZE) {
+	// return FieldType.LONG;
+	// }
+	// if (size > AccessorFactory.SHORT_SIZE) {
+	// return FieldType.INTEGER;
+	// }
+	// return FieldType.SHORT;
+	// }
+	// if (size > AccessorFactory.FLOAT_SIZE) {
+	// return FieldType.DOUBLE;
+	// }
+	// return FieldType.FLOAT;
+	// }
+	//
+	// private int getInt(Integer integer) {
+	// if (integer == null) {
+	// return 0;
+	// }
+	// return integer;
+	// }
 
 	public Connection getConnection() {
 		return connection;
@@ -589,4 +541,19 @@ public class DatabaseConnection {
 		return columns;
 	}
 
+	private TypeMappings getTypeMappings() {
+		if (database.getTypes() == null) {
+			return typeMappings;
+		}
+		return database.getTypes();
+	}
+
+	public Integer getSize(FieldType type) {
+		for (FieldTypeMapping mapping : getTypeMappings().getField()) {
+			if (mapping.getType() == type) {
+				return mapping.getSize();
+			}
+		}
+		return null;
+	}
 }

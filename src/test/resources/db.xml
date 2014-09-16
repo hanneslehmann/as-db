@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database driver="org.h2.Driver" url="jdbc:h2:mem:test"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://as.tibco.com/db.xsd">
+  <table name="MyTable" space="MySpace">
+    <column name="column1" field="field1" type="numeric" size="12" />
+    <column name="column2" field="field2" type="char" size="10" />
+    <column name="column3" field="field3" />
+    <column name="column4" field="field4" />
+    <column name="column5" field="field5" />
+    <column name="column6" field="field6" />
+    <column name="column7" field="field7" />
+    <column name="column8" field="field8" />
+    <column name="column9" field="field9" />
+    <column name="column10" field="field10" />
+  </table>
+</database>

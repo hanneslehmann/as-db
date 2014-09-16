@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://as.tibco.com/db.xsd">
+  <field type="blob" dataType="blob" />
+  <field type="boolean" dataType="bit" size="1" />
+  <field type="char" dataType="char" size="1" />
+  <field type="datetime" dataType="timestamp" />
+  <field type="double" dataType="double" />
+  <field type="float" dataType="real" />
+  <field type="integer" dataType="integer" />
+  <field type="long" dataType="bigint" />
+  <field type="short" dataType="smallint" />
+  <field type="string" dataType="varchar" />
+  <column type="char" fieldType="string" />
+  <column type="varchar" fieldType="string" />
+  <column type="longvarchar" fieldType="string" />
+  <column type="numeric" fieldType="double" />
+  <column type="decimal" fieldType="double" />
+  <column type="bit" fieldType="boolean" />
+  <column type="tinyint" fieldType="integer" />
+  <column type="smallint" fieldType="integer" />
+  <column type="integer" fieldType="integer" />
+  <column type="bigint" fieldType="long" />
+  <column type="real" fieldType="float" />
+  <column type="float" fieldType="double" />
+  <column type="double" fieldType="double" />
+  <column type="binary" fieldType="blob" />
+  <column type="varbinary" fieldType="blob" />
+  <column type="longvarbinary" fieldType="blob" />
+  <column type="date" fieldType="datetime" />
+  <column type="time" fieldType="datetime" />
+  <column type="timestamp" fieldType="datetime" />
+  <column type="clob" fieldType="string" />
+  <column type="blob" fieldType="blob" />
+  <column type="boolean" fieldType="boolean" />
+  <column type="longnvarchar" fieldType="string" />
+  <column type="nchar" fieldType="string" />
+  <column type="nclob" fieldType="string" />
+  <column type="nvarchar" fieldType="string" />
+  <column type="sqlxml" fieldType="string" />
+</types>
