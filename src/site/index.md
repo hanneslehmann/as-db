@@ -2,7 +2,7 @@
 
 ### Download
 
-<a href="http://activespaces.tibco.com/nexus/service/local/artifact/maven/redirect?r=releases&amp;g=com.tibco.as&amp;a=as-db&amp;v=2.0.5&amp;e=zip&amp;c=distribution" target="_blank" class="btn btn-primary">as-db-2.0.5</a>
+<a href="http://activespaces.tibco.com/nexus/service/local/artifact/maven/redirect?r=releases&amp;g=com.tibco.as&amp;a=as-db&amp;v=2.0.6&amp;e=zip&amp;c=distribution" target="_blank" class="btn btn-primary">as-db-2.0.6</a>
 
 <a href="https://github.com/TIBCOSoftware/as-db" target="_blank">Source</a>
 
