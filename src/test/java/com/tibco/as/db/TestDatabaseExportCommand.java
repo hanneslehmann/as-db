@@ -1,32 +1,30 @@
 package com.tibco.as.db;
 
+import java.io.File;
 import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.text.MessageFormat;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.tibco.as.space.Metaspace;
+import com.tibco.as.io.IOUtils;
 import com.tibco.as.space.Space;
 
-public class TestDatabaseExport extends TestBase {
+public class TestDatabaseExportCommand extends TestBase {
 
 	@Test
 	public void testExportDatabase() throws Exception {
+		File file = IOUtils.copy("db.xml", IOUtils.createTempDirectory());
 		Space space = createSpace();
-		Database database = createDatabase();
-		Metaspace metaspace = getMetaspace();
-		DatabaseExporter exporter = new DatabaseExporter(metaspace, database);
-		exporter.setKeepConnectionOpen(true);
-		exporter.execute();
+		String[] args = new String[] { "-config", file.getAbsolutePath(),
+				"-discovery", "tcp", "export", "-keep_connection_open" };
+		Application.main(args);
 		Connection conn = getConnection();
 		Statement stat = conn.createStatement();
-		ResultSet resultSet = stat.executeQuery(MessageFormat.format(
-				"select * from \"{0}\".\"{1}\" order by \"{2}\"",
-				metaspace.getName(), SPACE_NAME, FIELD_NAME1));
+		ResultSet resultSet = stat
+				.executeQuery("select * from \"ms\".\"MyTable\" order by \"column1\"");
 		int index = 1;
 		while (resultSet.next()) {
 			Assert.assertEquals(space.getSpaceDef().getFieldDefs().size(),
@@ -49,18 +47,6 @@ public class TestDatabaseExport extends TestBase {
 		}
 		Assert.assertEquals(SIZE, index - 1);
 		conn.close();
-		exporter.close();
-	}
-
-	@Test
-	public void testExportDatabaseConvert() throws Exception {
-		Connection connection = getConnection();
-		Statement statement = connection.createStatement();
-		statement.execute("CREATE SCHEMA ms");
-		String sql = "CREATE TABLE ms.MySpace (field1 BIGINT not null, field2 VARCHAR not null, field3 TIMESTAMP null, field4 BLOB null, field5 BOOLEAN null, field6 CHAR null, field7 DOUBLE PRECISION null, field8 FLOAT null, field9 INTEGER null, field10 SMALLINT null, Primary Key (field1,field2))";
-		statement.execute(sql);
-		testExportDatabase();
-		connection.close();
 	}
 
 }

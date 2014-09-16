@@ -1,5 +1,6 @@
 package com.tibco.as.db;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -7,11 +8,11 @@ import java.util.List;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.tibco.as.io.IMetaspaceTransfer;
-import com.tibco.as.io.cli.AbstractCommandImport;
+import com.tibco.as.io.cli.AbstractImportCommand;
 import com.tibco.as.space.Metaspace;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
-public class ImportCommand extends AbstractCommandImport {
+public class ImportCommand extends AbstractImportCommand {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -39,7 +40,7 @@ public class ImportCommand extends AbstractCommandImport {
 
 	@Override
 	protected Collection<IMetaspaceTransfer> getMetaspaceTransfers(
-			Metaspace metaspace) {
+			Metaspace metaspace) throws FileNotFoundException {
 		Collection<IMetaspaceTransfer> transfers = new ArrayList<IMetaspaceTransfer>();
 		Database database = application.getDatabase();
 		for (String tableName : tableNames) {
@@ -52,8 +53,8 @@ public class ImportCommand extends AbstractCommandImport {
 			table.setType(tableType);
 			database.getTables().add(table);
 		}
-		Importer importer = new Importer(metaspace, database);
-		Import transfer = new Import();
+		DatabaseImporter importer = new DatabaseImporter(metaspace, database);
+		DatabaseImport transfer = new DatabaseImport();
 		configure(transfer);
 		importer.setDefaultTransfer(transfer);
 		transfers.add(importer);
