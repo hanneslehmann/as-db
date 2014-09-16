@@ -17,7 +17,7 @@ public class Application extends AbstractApplication {
 	private String url;
 	@Parameter(names = { "-user" }, description = "Database user")
 	private String user;
-	@Parameter(names = { "-password" }, description = "Database password", password = true, echoInput = true)
+	@Parameter(names = { "-password" }, description = "Database password")
 	private String password;
 	@Parameter(names = { "-jar" }, description = "Path to driver JAR file")
 	private String jar;
