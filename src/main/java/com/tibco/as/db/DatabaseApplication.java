@@ -7,9 +7,11 @@ import javax.xml.bind.JAXB;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.tibco.as.io.IChannel;
 import com.tibco.as.io.cli.AbstractApplication;
+import com.tibco.as.space.Metaspace;
 
-public class Application extends AbstractApplication {
+public class DatabaseApplication extends AbstractApplication {
 
 	@Parameter(names = { "-driver" }, description = "Database driver class name")
 	private String driver;
@@ -23,12 +25,27 @@ public class Application extends AbstractApplication {
 	private String jar;
 	@Parameter(names = { "-config" }, description = "Database configuration XML file")
 	private String config;
+	@Parameter(names = { "-keep_open" }, description = "Do not close database connection after execution", hidden = true)
+	private boolean keepOpen;
 
 	public static void main(String[] args) throws Exception {
-		new Application().execute(args);
+		new DatabaseApplication().execute(args);
 	}
 
-	public Database getDatabase() throws FileNotFoundException {
+	@Override
+	protected void addCommands(JCommander jc) {
+		jc.addCommand(new DatabaseImportCommand());
+		jc.addCommand(new DatabaseExportCommand());
+	}
+
+	@Override
+	protected String getProgramName() {
+		return "as-db";
+	}
+
+	@Override
+	protected IChannel getChannel(Metaspace metaspace)
+			throws FileNotFoundException {
 		Database database;
 		if (config == null) {
 			database = new Database();
@@ -54,18 +71,14 @@ public class Application extends AbstractApplication {
 		if (database.getUser() == null) {
 			database.setUser(user);
 		}
-		return database;
-	}
-
-	@Override
-	protected void addCommands(JCommander jc) {
-		jc.addCommand(new ImportCommand(this));
-		jc.addCommand(new ExportCommand(this));
-	}
-
-	@Override
-	protected String getProgramName() {
-		return "as-db";
+		DatabaseChannel channel = new DatabaseChannel(metaspace, database);
+		for (Table table : database.getTables()) {
+			TableConfig config = new TableConfig();
+			config.setTable(table);
+			channel.addConfig(config);
+		}
+		channel.setKeepOpen(keepOpen);
+		return channel;
 	}
 
 }

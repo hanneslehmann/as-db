@@ -23,15 +23,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.xml.bind.JAXB;
 
 import com.tibco.as.db.accessors.BlobAccessor;
 import com.tibco.as.db.accessors.DefaultAccessor;
+import com.tibco.as.io.IInputStream;
+import com.tibco.as.log.LogFactory;
 import com.tibco.as.space.FieldDef.FieldType;
 
 @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -65,6 +68,8 @@ public class DatabaseConnection {
 
 	private static final char QUOTE = '\"';
 
+	private Logger log = LogFactory.getLog(DatabaseConnection.class);
+
 	private Database database;
 
 	private Connection connection;
@@ -76,7 +81,10 @@ public class DatabaseConnection {
 	}
 
 	public void open() throws Exception {
+		log.info("Opening database connection");
 		if (database.getDriver() == null) {
+			log.log(Level.FINE, "Database URL: {0}, user: {1}", new Object[] {
+					database.getUrl(), database.getUser() });
 			connection = DriverManager.getConnection(database.getUrl(),
 					database.getUser(), database.getPassword());
 		} else {
@@ -88,6 +96,8 @@ public class DatabaseConnection {
 				URLClassLoader classLoader;
 				URL url = new URL("file://" + database.getJar());
 				classLoader = URLClassLoader.newInstance(new URL[] { url });
+				log.log(Level.FINE, "Loading driver {0} from {1}",
+						new Object[] { database.getDriver(), url });
 				driverClass = (Class<Driver>) classLoader.loadClass(database
 						.getDriver());
 			}
@@ -99,6 +109,8 @@ public class DatabaseConnection {
 			if (database.getPassword() != null) {
 				props.put("password", database.getPassword());
 			}
+			log.log(Level.FINE, "Database URL: {0}, user: {1}", new Object[] {
+					database.getUrl(), database.getUser() });
 			connection = driver.connect(database.getUrl(), props);
 		}
 		InputStream in = getClass().getClassLoader().getResourceAsStream(
@@ -123,11 +135,11 @@ public class DatabaseConnection {
 
 	public String[] getColumnNames(Table table) {
 		List<Column> columns = table.getColumns();
-		String[] columnNames = new String[columns.size()];
-		for (int index = 0; index < columns.size(); index++) {
-			columnNames[index] = getName(columns.get(index));
+		Collection<String> columnNames = new ArrayList<String>();
+		for (Column column : columns) {
+			columnNames.add(getName(column));
 		}
-		return columnNames;
+		return columnNames.toArray(new String[columnNames.size()]);
 	}
 
 	public String getName(Column column) {
@@ -221,7 +233,8 @@ public class DatabaseConnection {
 			t.setDistributionRole(table.getDistributionRole());
 			t.setFetchSize(table.getFetchSize());
 			t.setSpace(table.getSpace());
-			t.setSql(table.getSql());
+			t.setSelectSQL(table.getSelectSQL());
+			t.setCountSQL(table.getCountSQL());
 			t.getColumns().addAll(getColumns(t));
 		}
 		return tables;
@@ -362,28 +375,8 @@ public class DatabaseConnection {
 	}
 
 	public void close() throws SQLException {
+		log.info("Closing database connection");
 		connection.close();
-	}
-
-	private void execute(String sql) throws SQLException {
-		Statement statement = createStatement();
-		try {
-			statement.execute(sql);
-		} finally {
-			statement.close();
-		}
-	}
-
-	private ResultSet executeQuery(String sql) throws SQLException {
-		return createStatement().executeQuery(sql);
-	}
-
-	public PreparedStatement prepare(String sql) throws SQLException {
-		return connection.prepareStatement(sql);
-	}
-
-	private Statement createStatement() throws SQLException {
-		return connection.createStatement();
 	}
 
 	private String getCreateSQL(Table table) throws SQLException {
@@ -434,21 +427,26 @@ public class DatabaseConnection {
 	}
 
 	public void create(Table table) throws SQLException {
-		if (table.getCatalog() != null) {
-			if (!getCatalogs().contains(table.getCatalog())) {
-				execute(MessageFormat.format("CREATE CATALOG \"{0}\"",
-						table.getCatalog()));
+		Statement statement = connection.createStatement();
+		try {
+			if (table.getCatalog() != null) {
+				if (!getCatalogs().contains(table.getCatalog())) {
+					statement.execute(MessageFormat.format(
+							"CREATE CATALOG \"{0}\"", table.getCatalog()));
+				}
 			}
-		}
-		if (table.getSchema() != null) {
-			if (!getSchemas(table.getCatalog(), null).contains(
-					table.getSchema())) {
-				execute(MessageFormat.format("CREATE SCHEMA \"{0}\"",
-						table.getSchema()));
+			if (table.getSchema() != null) {
+				if (!getSchemas(table.getCatalog(), null).contains(
+						table.getSchema())) {
+					statement.execute(MessageFormat.format(
+							"CREATE SCHEMA \"{0}\"", table.getSchema()));
+				}
 			}
+			String sql = getCreateSQL(table);
+			statement.execute(sql);
+		} finally {
+			statement.close();
 		}
-		String sql = getCreateSQL(table);
-		execute(sql);
 	}
 
 	public PreparedStatement getInsertStatement(Table table)
@@ -460,7 +458,8 @@ public class DatabaseConnection {
 		String sql = MessageFormat.format("INSERT INTO {0} ({1}) VALUES ({2})",
 				tableName, getCommaSeparated(columnNames),
 				getCommaSeparated(questionMarks));
-		return prepare(sql);
+		log.log(Level.FINE, "Preparing insert statement {0}", sql);
+		return connection.prepareStatement(sql);
 	}
 
 	public FieldType getFieldType(JDBCType type)
@@ -503,20 +502,18 @@ public class DatabaseConnection {
 	// return integer;
 	// }
 
-	public Connection getConnection() {
-		return connection;
-	}
-
 	public ResultSet select(Table table) throws SQLException {
-		if (table.getSql() == null) {
-			String name = getFullyQualifiedName(table);
+		if (table.getSelectSQL() == null) {
 			String[] columnNames = getColumnNames(table);
 			String names = getCommaSeparated(columnNames);
-			String sql = MessageFormat.format("SELECT {0} FROM {1}", names,
-					name);
-			table.setSql(sql);
+			String name = getFullyQualifiedName(table);
+			table.setSelectSQL(getSelect(names, name));
+			if (table.getCountSQL() == null) {
+				table.setCountSQL(getSelect("COUNT(*)", name));
+			}
 		}
-		ResultSet resultSet = executeQuery(table.getSql());
+		Statement statement = connection.createStatement();
+		ResultSet resultSet = statement.executeQuery(table.getSelectSQL());
 		if (table.getFetchSize() != null) {
 			resultSet.setFetchSize(table.getFetchSize());
 		}
@@ -524,9 +521,13 @@ public class DatabaseConnection {
 		return resultSet;
 	}
 
-	public Map<String, Column> getColumns(ResultSet resultSet)
+	private String getSelect(String select, String from) {
+		return MessageFormat.format("SELECT {0} FROM {1}", select, from);
+	}
+
+	public Collection<Column> getColumns(ResultSet resultSet)
 			throws SQLException {
-		Map<String, Column> columns = new LinkedHashMap<String, Column>();
+		Collection<Column> columns = new ArrayList<Column>();
 		ResultSetMetaData metaData = resultSet.getMetaData();
 		for (int index = 0; index < metaData.getColumnCount(); index++) {
 			Column column = new Column();
@@ -536,7 +537,7 @@ public class DatabaseConnection {
 			column.setNullable(metaData.isNullable(columnIndex) == ResultSetMetaData.columnNullable);
 			column.setSize(metaData.getPrecision(columnIndex));
 			column.setType(JDBCType.valueOf(metaData.getColumnType(columnIndex)));
-			columns.put(column.getName(), column);
+			columns.add(column);
 		}
 		return columns;
 	}
@@ -555,5 +556,27 @@ public class DatabaseConnection {
 			}
 		}
 		return null;
+	}
+
+	public long getCount(Table table) throws SQLException {
+		String sql = table.getCountSQL();
+		if (sql == null) {
+			return IInputStream.UNKNOWN_SIZE;
+		}
+		log.log(Level.FINE, "Retrieving number of rows: {0}", sql);
+		Statement statement = connection.createStatement();
+		try {
+			ResultSet resultSet = statement.executeQuery(sql);
+			try {
+				if (resultSet.next()) {
+					return resultSet.getLong(1);
+				}
+				return IInputStream.UNKNOWN_SIZE;
+			} finally {
+				resultSet.close();
+			}
+		} finally {
+			statement.close();
+		}
 	}
 }

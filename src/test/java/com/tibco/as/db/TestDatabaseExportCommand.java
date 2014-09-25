@@ -2,26 +2,25 @@ package com.tibco.as.db;
 
 import java.io.File;
 import java.sql.Blob;
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.tibco.as.io.IOUtils;
+import com.tibco.as.io.Utils;
 import com.tibco.as.space.Space;
 
 public class TestDatabaseExportCommand extends TestBase {
 
 	@Test
 	public void testExportDatabase() throws Exception {
-		File file = IOUtils.copy("db.xml", IOUtils.createTempDirectory());
+		File file = Utils.copy("db.xml", Utils.createTempDirectory());
 		Space space = createSpace();
 		String[] args = new String[] { "-config", file.getAbsolutePath(),
-				"-discovery", "tcp", "export", "-keep_connection_open" };
-		Application.main(args);
-		Connection conn = getConnection();
+				"-discovery", "tcp", "-keep_open", "export" };
+		DatabaseApplication.main(args);
+		java.sql.Connection conn = getConnection();
 		Statement stat = conn.createStatement();
 		ResultSet resultSet = stat
 				.executeQuery("select * from \"ms\".\"MyTable\" order by \"column1\"");

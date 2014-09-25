@@ -5,15 +5,14 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
-import com.tibco.as.io.EventManager;
 import com.tibco.as.io.IOutputStream;
 
-public class OutputStream implements IOutputStream<Object[]> {
+public class TableOutputStream implements IOutputStream<Object[]> {
 
 	private PreparedStatement statement;
 	private IPreparedStatementAccessor[] accessors;
 
-	public OutputStream(PreparedStatement statement,
+	public TableOutputStream(PreparedStatement statement,
 			IPreparedStatementAccessor[] accessors) {
 		this.statement = statement;
 		this.accessors = accessors;
@@ -28,17 +27,6 @@ public class OutputStream implements IOutputStream<Object[]> {
 		statement.executeBatch();
 		statement.close();
 		statement = null;
-	}
-
-	@Override
-	public boolean isClosed() {
-		try {
-			return statement == null || statement.isClosed();
-		} catch (SQLException e) {
-			EventManager.error(e,
-					"Could not retrieve whether statement is closed");
-			return false;
-		}
 	}
 
 	@Override

@@ -28,7 +28,7 @@ public class Adapter {
 	public static DistributionRole parseDistributionRole(String name) {
 		return DistributionRole.valueOf(parse(name));
 	}
-	
+
 	public static String printFieldType(FieldType type) {
 		return print(type);
 	}
@@ -36,6 +36,5 @@ public class Adapter {
 	public static FieldType parseFieldType(String name) {
 		return FieldType.valueOf(parse(name));
 	}
-
 
 }

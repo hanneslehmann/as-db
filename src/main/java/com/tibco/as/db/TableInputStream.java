@@ -2,22 +2,31 @@ package com.tibco.as.db;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.MessageFormat;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import com.tibco.as.io.EventManager;
 import com.tibco.as.io.IInputStream;
+import com.tibco.as.log.LogFactory;
 
-public class InputStream implements IInputStream<Object[]> {
+public class TableInputStream implements IInputStream<Object[]> {
+
+	private Logger log = LogFactory.getLog(TableInputStream.class);
 
 	private ResultSet resultSet;
 	private IPreparedStatementAccessor[] accessors;
 	private long position;
+	private long count;
 
-	public InputStream(ResultSet resultSet,
-			IPreparedStatementAccessor[] accessors) {
+	public TableInputStream(ResultSet resultSet,
+			IPreparedStatementAccessor[] accessors, long count) {
 		this.resultSet = resultSet;
 		this.accessors = accessors;
+		this.count = count;
+	}
+
+	public ResultSet getResultSet() {
+		return resultSet;
 	}
 
 	@Override
@@ -26,7 +35,7 @@ public class InputStream implements IInputStream<Object[]> {
 
 	@Override
 	public long size() {
-		return IInputStream.UNKNOWN_SIZE;
+		return count;
 	}
 
 	@Override
@@ -52,9 +61,7 @@ public class InputStream implements IInputStream<Object[]> {
 		if (resultSet == null) {
 			return;
 		}
-		Statement statement = resultSet.getStatement();
 		resultSet.close();
-		statement.close();
 	}
 
 	@Override
@@ -62,7 +69,7 @@ public class InputStream implements IInputStream<Object[]> {
 		try {
 			return resultSet == null || resultSet.isClosed();
 		} catch (SQLException e) {
-			EventManager.error(e, "Could not get state of result set");
+			log.log(Level.SEVERE, "Could not get state of result set", e);
 			return false;
 		}
 	}
@@ -70,11 +77,11 @@ public class InputStream implements IInputStream<Object[]> {
 	@Override
 	public String getName() {
 		try {
-			return MessageFormat.format("table ''{0}''", resultSet
-					.getMetaData().getTableName(1));
+			String tableName = resultSet.getMetaData().getTableName(1);
+			return MessageFormat.format("table ''{0}''", tableName);
 		} catch (SQLException e) {
-			EventManager.error(e, "Could not get result set's table name");
-			return "Unkwown table";
+			log.log(Level.SEVERE, "Could not get result set metadata", e);
+			return "unkwown table";
 		}
 	}
 
