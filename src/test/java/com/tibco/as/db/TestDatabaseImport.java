@@ -1,7 +1,6 @@
 package com.tibco.as.db;
 
 import java.sql.Blob;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -9,6 +8,7 @@ import java.sql.Timestamp;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.tibco.as.io.Direction;
 import com.tibco.as.space.FieldDef.FieldType;
 import com.tibco.as.space.Member.DistributionRole;
 import com.tibco.as.space.Metaspace;
@@ -22,8 +22,8 @@ public class TestDatabaseImport extends TestBase {
 	private static final int SIZE = 1000;
 
 	@Test
-	public void testDatabaseImporter() throws Exception {
-		Connection conn = getConnection();
+	public void testImportDatabase() throws Exception {
+		java.sql.Connection conn = getConnection();
 		// populate table "TEST"
 		Statement statement = conn.createStatement();
 		statement.execute("DROP TABLE IF EXISTS \"MySpace\"");
@@ -51,12 +51,15 @@ public class TestDatabaseImport extends TestBase {
 		conn.commit();
 		preparedStatement.close();
 		Metaspace metaspace = getMetaspace();
-		Database db = createDatabase();
-		DatabaseImporter importer = new DatabaseImporter(metaspace, db);
-		DatabaseImport import1 = new DatabaseImport();
-		import1.setDistributionRole(DistributionRole.SEEDER);
-		importer.setDefaultTransfer(import1);
-		importer.execute();
+		Database database = createDatabase();
+		DatabaseChannel channel = new DatabaseChannel(metaspace, database);
+		TableConfig config = new TableConfig();
+		config.setDirection(Direction.IMPORT);
+		config.getTable().setName("MySpace");
+		config.setDistributionRole(DistributionRole.SEEDER);
+		channel.addConfig(config);
+		channel.open();
+		channel.close();
 		SpaceDef spaceDef = metaspace.getSpaceDef(SPACE_NAME);
 		Assert.assertEquals(FieldType.LONG, spaceDef.getFieldDef(FIELD_NAME1)
 				.getType());
@@ -102,6 +105,7 @@ public class TestDatabaseImport extends TestBase {
 		} finally {
 			browser.stop();
 		}
+		channel.close();
 	}
 
 }

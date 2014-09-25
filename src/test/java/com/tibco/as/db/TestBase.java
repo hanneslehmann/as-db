@@ -1,6 +1,5 @@
 package com.tibco.as.db;
 
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -8,23 +7,18 @@ import java.util.Calendar;
 
 import org.h2.Driver;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 
-import com.tibco.as.io.EventManager;
-import com.tibco.as.io.IEvent;
-import com.tibco.as.io.IEvent.Severity;
-import com.tibco.as.io.IEventListener;
 import com.tibco.as.space.ASException;
 import com.tibco.as.space.DateTime;
 import com.tibco.as.space.FieldDef;
+import com.tibco.as.space.FieldDef.FieldType;
+import com.tibco.as.space.Member.DistributionRole;
 import com.tibco.as.space.MemberDef;
 import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.Space;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
-import com.tibco.as.space.FieldDef.FieldType;
-import com.tibco.as.space.Member.DistributionRole;
 
 public class TestBase {
 
@@ -84,15 +78,6 @@ public class TestBase {
 		MemberDef memberDef = MemberDef.create(null, "tcp", null);
 		memberDef.setConnectTimeout(10000);
 		metaspace = Metaspace.connect(null, memberDef);
-		EventManager.addListener(new IEventListener() {
-			@Override
-			public void onEvent(IEvent event) {
-				if (event.getSeverity() == Severity.ERROR) {
-					event.getException().printStackTrace();
-					Assert.fail(event.getMessage());
-				}
-			}
-		});
 	}
 
 	@After
@@ -112,7 +97,7 @@ public class TestBase {
 		return spaceDef;
 	}
 
-	protected Connection getConnection() throws SQLException,
+	protected java.sql.Connection getConnection() throws SQLException,
 			ClassNotFoundException {
 		Class.forName(DRIVER);
 		return DriverManager.getConnection(URL);

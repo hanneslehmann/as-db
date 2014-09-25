@@ -59,7 +59,10 @@
     <xsd:sequence>
       <xsd:element name="column" type="column" minOccurs="0"
         maxOccurs="unbounded" />
-      <xsd:element name="sql" type="xsd:string" minOccurs="0" />
+      <xsd:element name="selectSQL" type="xsd:string"
+        minOccurs="0" />
+      <xsd:element name="countSQL" type="xsd:string"
+        minOccurs="0" />
     </xsd:sequence>
     <xsd:attribute name="catalog" type="xsd:string" />
     <xsd:attribute name="schema" type="xsd:string" />

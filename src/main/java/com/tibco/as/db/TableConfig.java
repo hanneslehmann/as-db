@@ -1,9 +1,9 @@
 package com.tibco.as.db;
 
-import com.tibco.as.io.AbstractImport;
+import com.tibco.as.io.DestinationConfig;
 import com.tibco.as.space.Member.DistributionRole;
 
-public class DatabaseImport extends AbstractImport {
+public class TableConfig extends DestinationConfig {
 
 	private Table table = new Table();
 
@@ -43,15 +43,15 @@ public class DatabaseImport extends AbstractImport {
 	}
 
 	@Override
-	public DatabaseImport clone() {
-		DatabaseImport result = new DatabaseImport();
-		copyTo(result);
-		return result;
+	public TableConfig clone() {
+		TableConfig export = new TableConfig();
+		copyTo(export);
+		return export;
 	}
 
-	public void copyTo(DatabaseImport target) {
-		target.table = table;
-		super.copyTo(target);
+	public void copyTo(TableConfig export) {
+		export.table = table;
+		super.copyTo(export);
 	}
 
 }
