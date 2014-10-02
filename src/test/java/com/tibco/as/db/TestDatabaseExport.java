@@ -9,7 +9,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.tibco.as.io.Direction;
-import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.Space;
 
 public class TestDatabaseExport extends TestBase {
@@ -17,21 +16,18 @@ public class TestDatabaseExport extends TestBase {
 	@Test
 	public void testExportToDatabase() throws Exception {
 		Space space = createSpace();
-		Database database = createDatabase();
-		Metaspace metaspace = getMetaspace();
-		DatabaseChannel channel = new DatabaseChannel(metaspace, database);
-		TableConfig config = new TableConfig();
-		config.setDirection(Direction.EXPORT);
-		config.setSpaceName(SPACE_NAME);
-		channel.addConfig(config);
-		channel.setKeepOpen(true);
+		DatabaseConfig config = createDatabaseConfig();
+		TableConfig table = new TableConfig();
+		table.setDirection(Direction.EXPORT);
+		table.setSpace(SPACE_NAME);
+		config.getDestinations().add(table);
+		DatabaseChannel channel = new DatabaseChannel(config);
 		channel.open();
 		channel.close();
-		java.sql.Connection conn = getConnection();
-		Statement stat = conn.createStatement();
+		Statement stat = getConnection().createStatement();
 		ResultSet resultSet = stat.executeQuery(MessageFormat.format(
-				"select * from \"{0}\".\"{1}\" order by \"{2}\"",
-				metaspace.getName(), SPACE_NAME, FIELD_NAME1));
+				"select * from \"{0}\" order by \"{1}\"", SPACE_NAME,
+				FIELD_NAME1));
 		int index = 1;
 		while (resultSet.next()) {
 			Assert.assertEquals(space.getSpaceDef().getFieldDefs().size(),
@@ -53,8 +49,6 @@ public class TestDatabaseExport extends TestBase {
 			index++;
 		}
 		Assert.assertEquals(SIZE, index - 1);
-		conn.close();
-		channel.getConnection().close();
 	}
 
 	@Test

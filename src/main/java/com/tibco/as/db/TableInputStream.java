@@ -62,6 +62,7 @@ public class TableInputStream implements IInputStream<Object[]> {
 			return;
 		}
 		resultSet.close();
+		resultSet = null;
 	}
 
 	@Override

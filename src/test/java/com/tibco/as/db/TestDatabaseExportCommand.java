@@ -14,16 +14,16 @@ import com.tibco.as.space.Space;
 public class TestDatabaseExportCommand extends TestBase {
 
 	@Test
-	public void testExportDatabase() throws Exception {
+	public void testExportCommand() throws Exception {
 		File file = Utils.copy("db.xml", Utils.createTempDirectory());
 		Space space = createSpace();
 		String[] args = new String[] { "-config", file.getAbsolutePath(),
-				"-discovery", "tcp", "-keep_open", "export" };
+				"-discovery", "tcp", "-driver", "org.h2.Driver", "-url",
+				"jdbc:h2:mem:test", "export" };
 		DatabaseApplication.main(args);
-		java.sql.Connection conn = getConnection();
-		Statement stat = conn.createStatement();
+		Statement stat = getConnection().createStatement();
 		ResultSet resultSet = stat
-				.executeQuery("select * from \"ms\".\"MyTable\" order by \"column1\"");
+				.executeQuery("select * from \"MyTable\" order by \"column1\"");
 		int index = 1;
 		while (resultSet.next()) {
 			Assert.assertEquals(space.getSpaceDef().getFieldDefs().size(),
@@ -45,7 +45,6 @@ public class TestDatabaseExportCommand extends TestBase {
 			index++;
 		}
 		Assert.assertEquals(SIZE, index - 1);
-		conn.close();
 	}
 
 }

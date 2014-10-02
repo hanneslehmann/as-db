@@ -23,15 +23,14 @@ public class TestDatabaseImport extends TestBase {
 
 	@Test
 	public void testImportDatabase() throws Exception {
-		java.sql.Connection conn = getConnection();
-		// populate table "TEST"
-		Statement statement = conn.createStatement();
+		Statement statement = getConnection().createStatement();
 		statement.execute("DROP TABLE IF EXISTS \"MySpace\"");
 		statement
 				.execute("CREATE TABLE \"MySpace\" (\"field1\" BIGINT not null, \"field2\" VARCHAR not null, \"field3\" TIMESTAMP null, \"field4\" BLOB null, \"field5\" BOOLEAN null, \"field6\" CHAR(1) null, \"field7\" DOUBLE PRECISION null, \"field8\" REAL null, \"field9\" INTEGER null, \"field10\" SMALLINT null, Primary Key (\"field1\",\"field2\"))");
 		statement.close();
-		PreparedStatement preparedStatement = conn
-				.prepareStatement("INSERT INTO \"MySpace\" (\"field1\", \"field2\", \"field3\", \"field4\", \"field5\", \"field6\", \"field7\", \"field8\", \"field9\", \"field10\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+		PreparedStatement preparedStatement = getConnection()
+				.prepareStatement(
+						"INSERT INTO \"MySpace\" (\"field1\", \"field2\", \"field3\", \"field4\", \"field5\", \"field6\", \"field7\", \"field8\", \"field9\", \"field10\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 		for (int index = 0; index < SIZE; index++) {
 			preparedStatement.setLong(1, index);
 			preparedStatement.setString(2, getString(index));
@@ -48,16 +47,16 @@ public class TestDatabaseImport extends TestBase {
 			preparedStatement.setShort(10, (short) index);
 			preparedStatement.execute();
 		}
-		conn.commit();
+		getConnection().commit();
 		preparedStatement.close();
 		Metaspace metaspace = getMetaspace();
-		Database database = createDatabase();
-		DatabaseChannel channel = new DatabaseChannel(metaspace, database);
-		TableConfig config = new TableConfig();
-		config.setDirection(Direction.IMPORT);
-		config.getTable().setName("MySpace");
-		config.setDistributionRole(DistributionRole.SEEDER);
-		channel.addConfig(config);
+		DatabaseConfig database = createDatabaseConfig();
+		TableConfig table = new TableConfig();
+		table.setTable("MySpace");
+		table.setDirection(Direction.IMPORT);
+		table.setDistributionRole(DistributionRole.SEEDER);
+		database.getDestinations().add(table);
+		DatabaseChannel channel = new DatabaseChannel(database);
 		channel.open();
 		channel.close();
 		SpaceDef spaceDef = metaspace.getSpaceDef(SPACE_NAME);
@@ -105,7 +104,6 @@ public class TestDatabaseImport extends TestBase {
 		} finally {
 			browser.stop();
 		}
-		channel.close();
 	}
 
 }

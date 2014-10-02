@@ -1,14 +1,18 @@
 package com.tibco.as.db;
 
+import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.logging.Logger;
 
 import org.h2.Driver;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
+import com.tibco.as.log.LogFactory;
+import com.tibco.as.log.LogLevel;
 import com.tibco.as.space.ASException;
 import com.tibco.as.space.DateTime;
 import com.tibco.as.space.FieldDef;
@@ -22,32 +26,20 @@ import com.tibco.as.space.Tuple;
 
 public class TestBase {
 
-	protected final static String DRIVER = Driver.class.getName();
-
-	protected final static String URL = "jdbc:h2:mem:test";
-
+	private Logger log = LogFactory.getLog(TestBase.class);
+	private final static String DRIVER = Driver.class.getName();
+	private final static String URL = "jdbc:h2:mem:test";
 	public static final String SPACE_NAME = "MySpace";
-
 	public static final String FIELD_NAME1 = "field1";
-
 	public static final String FIELD_NAME2 = "field2";
-
 	public static final String FIELD_NAME3 = "field3";
-
 	public static final String FIELD_NAME4 = "field4";
-
 	public static final String FIELD_NAME5 = "field5";
-
 	public static final String FIELD_NAME6 = "field6";
-
 	public static final String FIELD_NAME7 = "field7";
-
 	public static final String FIELD_NAME8 = "field8";
-
 	public static final String FIELD_NAME9 = "field9";
-
 	public static final String FIELD_NAME10 = "field10";
-
 	protected static final FieldDef FIELD1 = FieldDef.create(FIELD_NAME1,
 			FieldType.LONG).setNullable(false);
 	protected static final FieldDef FIELD2 = FieldDef.create(FIELD_NAME2,
@@ -70,19 +62,39 @@ public class TestBase {
 			FieldType.SHORT).setNullable(true);
 
 	protected static final int SIZE = 100;
-
 	private Metaspace metaspace;
+	private Connection connection;
+
+	@BeforeClass
+	public static void setup() {
+		LogFactory.getRootLogger(LogLevel.DEBUG);
+	}
 
 	@Before
-	public void connectMetaspace() throws ASException {
-		MemberDef memberDef = MemberDef.create(null, "tcp", null);
-		memberDef.setConnectTimeout(10000);
-		metaspace = Metaspace.connect(null, memberDef);
+	public void connectMetaspace() throws Exception {
+		metaspace = Metaspace.connect(null, getMemberDef());
+		log.info("TestBase - Connecting " + DRIVER);
+		Class.forName(DRIVER);
+		connection = DriverManager.getConnection(URL);
+		connection.setAutoCommit(true);
+	}
+
+	protected MemberDef getMemberDef() {
+		return MemberDef.create(null, "tcp", null).setConnectTimeout(10000);
+
 	}
 
 	@After
-	public void closeMetaspace() throws ASException {
+	public void closeMetaspace() throws Exception {
 		metaspace.closeAll();
+		metaspace = null;
+		connection.close();
+		connection = null;
+		log.info("TestBase - Disconnected");
+	}
+
+	public Connection getConnection() {
+		return connection;
 	}
 
 	protected Metaspace getMetaspace() {
@@ -97,16 +109,10 @@ public class TestBase {
 		return spaceDef;
 	}
 
-	protected java.sql.Connection getConnection() throws SQLException,
-			ClassNotFoundException {
-		Class.forName(DRIVER);
-		return DriverManager.getConnection(URL);
-	}
-
-	protected Database createDatabase() {
-		Database database = new Database();
+	protected DatabaseConfig createDatabaseConfig() {
+		DatabaseConfig database = new DatabaseConfig();
 		database.setDriver(DRIVER);
-		database.setUrl(URL);
+		database.setURL(URL);
 		return database;
 	}
 

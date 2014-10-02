@@ -12,23 +12,27 @@ public class DatabaseExportCommand extends AbstractExportCommand {
 	private String catalog;
 	@Parameter(names = { "-schema" }, description = "Schema name")
 	private String schema;
+	@Parameter(names = { "-insert_batch_size" }, description = "Insert batch size")
+	private Integer insertBatchSize;
 
 	@Override
-	protected TableConfig createConfig() {
+	protected TableConfig createDestinationConfig() {
 		return new TableConfig();
 	}
 
 	@Override
 	protected void configure(DestinationConfig config) {
-		TableConfig export = (TableConfig) config;
-		Table table = export.getTable();
+		TableConfig table = (TableConfig) config;
 		if (table.getCatalog() == null) {
 			table.setCatalog(catalog);
 		}
 		if (table.getSchema() == null) {
 			table.setSchema(schema);
 		}
-		super.configure(export);
+		if (table.getInsertBatchSize() == null) {
+			table.setInsertBatchSize(insertBatchSize);
+		}
+		super.configure(config);
 	}
 
 }

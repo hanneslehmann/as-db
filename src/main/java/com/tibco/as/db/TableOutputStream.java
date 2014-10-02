@@ -24,7 +24,6 @@ public class TableOutputStream implements IOutputStream<Object[]> {
 
 	@Override
 	public void close() throws Exception {
-		statement.executeBatch();
 		statement.close();
 		statement = null;
 	}
@@ -39,6 +38,8 @@ public class TableOutputStream implements IOutputStream<Object[]> {
 			statement.executeBatch();
 		} catch (BatchUpdateException e) {
 			throw e.getNextException();
+		} catch (SQLException e) {
+			throw e;
 		}
 	}
 

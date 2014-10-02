@@ -7,9 +7,9 @@ import javax.xml.bind.JAXB;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.tibco.as.io.ChannelConfig;
 import com.tibco.as.io.IChannel;
 import com.tibco.as.io.cli.AbstractApplication;
-import com.tibco.as.space.Metaspace;
 
 public class DatabaseApplication extends AbstractApplication {
 
@@ -25,8 +25,6 @@ public class DatabaseApplication extends AbstractApplication {
 	private String jar;
 	@Parameter(names = { "-config" }, description = "Database configuration XML file")
 	private String config;
-	@Parameter(names = { "-keep_open" }, description = "Do not close database connection after execution", hidden = true)
-	private boolean keepOpen;
 
 	public static void main(String[] args) throws Exception {
 		new DatabaseApplication().execute(args);
@@ -44,41 +42,49 @@ public class DatabaseApplication extends AbstractApplication {
 	}
 
 	@Override
-	protected IChannel getChannel(Metaspace metaspace)
-			throws FileNotFoundException {
-		Database database;
-		if (config == null) {
-			database = new Database();
-		} else {
-			database = JAXB.unmarshal(new FileInputStream(config),
-					Database.class);
-		}
-		if (database.getMetaspace() == null) {
-			database.setMetaspace(getMetaspaceName());
-		}
-		if (database.getDriver() == null) {
-			database.setDriver(driver);
-		}
-		if (database.getJar() == null) {
-			database.setJar(jar);
-		}
-		if (database.getPassword() == null) {
-			database.setPassword(password);
-		}
-		if (database.getUrl() == null) {
-			database.setUrl(url);
-		}
-		if (database.getUser() == null) {
-			database.setUser(user);
-		}
-		DatabaseChannel channel = new DatabaseChannel(metaspace, database);
-		for (Table table : database.getTables()) {
-			TableConfig config = new TableConfig();
-			config.setTable(table);
-			channel.addConfig(config);
-		}
-		channel.setKeepOpen(keepOpen);
-		return channel;
+	protected IChannel getChannel(ChannelConfig config) {
+		return new DatabaseChannel((DatabaseConfig) config);
 	}
 
+	@Override
+	protected DatabaseConfig getChannelConfig() throws FileNotFoundException {
+		DatabaseConfig config = getDatabaseConfig();
+		config.setDriver(driver);
+		config.setJar(jar);
+		config.setPassword(password);
+		config.setURL(url);
+		config.setUser(user);
+		return config;
+	}
+
+	private DatabaseConfig getDatabaseConfig() throws FileNotFoundException {
+		DatabaseConfig databaseConfig = new DatabaseConfig();
+		if (config != null) {
+			FileInputStream in = new FileInputStream(config);
+			Database database = JAXB.unmarshal(in, Database.class);
+			for (Table table : database.getTables()) {
+				TableConfig tableConfig = new TableConfig();
+				tableConfig.setCatalog(table.getCatalog());
+				tableConfig.setCountSQL(table.getCountSQL());
+				tableConfig.setTable(table.getName());
+				tableConfig.setSchema(table.getSchema());
+				tableConfig.setSelectSQL(table.getSelectSQL());
+				tableConfig.setSpace(table.getSpace());
+				tableConfig.setType(table.getType());
+				for (Column column : table.getColumns()) {
+					ColumnConfig columnConfig = new ColumnConfig();
+					columnConfig.setFieldName(column.getField());
+					columnConfig.setColumnName(column.getName());
+					columnConfig.setColumnNullable(column.isNullable());
+					columnConfig.setColumnSize(column.getSize());
+					columnConfig.setColumnType(column.getType());
+					columnConfig.setDecimalDigits(column.getDecimalDigits());
+					columnConfig.setRadix(column.getRadix());
+					tableConfig.getFields().add(columnConfig);
+				}
+				databaseConfig.getDestinations().add(tableConfig);
+			}
+		}
+		return databaseConfig;
+	}
 }

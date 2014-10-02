@@ -1,12 +1,12 @@
 package com.tibco.as.db;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.IChannel;
 import com.tibco.as.io.cli.AbstractImportCommand;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
@@ -35,8 +35,7 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 
 	@Override
 	protected void configure(DestinationConfig config) {
-		TableConfig importConfig = (TableConfig) config;
-		Table table = importConfig.getTable();
+		TableConfig table = (TableConfig) config;
 		if (table.getCatalog() == null) {
 			table.setCatalog(catalog);
 		}
@@ -59,13 +58,11 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 	}
 
 	@Override
-	public void configure(IChannel channel) throws Exception {
+	protected void configure(Collection<DestinationConfig> destinations) {
 		for (String tableName : tableNames) {
-			TableConfig config = new TableConfig();
-			config.getTable().setName(tableName);
-			channel.addConfig(config);
+			TableConfig table = new TableConfig();
+			table.setTable(tableName);
+			destinations.add(table);
 		}
-		super.configure(channel);
 	}
-
 }
