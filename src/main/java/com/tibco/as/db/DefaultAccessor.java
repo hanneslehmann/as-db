@@ -1,10 +1,8 @@
-package com.tibco.as.db.accessors;
+package com.tibco.as.db;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
-import com.tibco.as.db.IPreparedStatementAccessor;
 
 public class DefaultAccessor implements IPreparedStatementAccessor {
 

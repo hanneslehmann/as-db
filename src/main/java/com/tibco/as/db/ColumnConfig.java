@@ -1,5 +1,11 @@
 package com.tibco.as.db;
 
+import java.math.BigDecimal;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+
 import com.tibco.as.io.FieldConfig;
 import com.tibco.as.space.FieldDef.FieldType;
 
@@ -7,6 +13,9 @@ public class ColumnConfig extends FieldConfig {
 
 	private static final int DEFAULT_BLOB_SIZE = 255;
 	private static final int DEFAULT_CLOB_SIZE = 255;
+	private static final int DEFAULT_BOOLEAN_SIZE = 1;
+	private static final int DEFAULT_CHAR_SIZE = 1;
+	private static final int DEFAULT_LONG_SIZE = 19;
 
 	private String columnName;
 	private JDBCType columnType;
@@ -14,6 +23,15 @@ public class ColumnConfig extends FieldConfig {
 	private Integer decimalDigits;
 	private Integer radix;
 	private Boolean columnNullable;
+	private Short keySequence;
+
+	public Short getKeySequence() {
+		return keySequence;
+	}
+
+	public void setKeySequence(Short keySequence) {
+		this.keySequence = keySequence;
+	}
 
 	public String getColumnName() {
 		if (columnName == null) {
@@ -58,25 +76,35 @@ public class ColumnConfig extends FieldConfig {
 		this.columnType = columnType;
 	}
 
+	@SuppressWarnings("incomplete-switch")
 	public Integer getColumnSize() {
 		if (columnSize == null) {
-			switch (getColumnType()) {
-			case BINARY:
-			case BLOB:
-			case LONGVARBINARY:
-			case VARBINARY:
-				return DEFAULT_BLOB_SIZE;
-			case CHAR:
-			case CLOB:
-			case LONGNVARCHAR:
-			case LONGVARCHAR:
-			case NCHAR:
-			case NCLOB:
-			case NVARCHAR:
-			case VARCHAR:
-				return DEFAULT_CLOB_SIZE;
-			default:
-				return null;
+			if (columnType == null) {
+				switch (getFieldType()) {
+				case BOOLEAN:
+					return DEFAULT_BOOLEAN_SIZE;
+				case CHAR:
+					return DEFAULT_CHAR_SIZE;
+				case LONG:
+					return DEFAULT_LONG_SIZE;
+				}
+			} else {
+				switch (columnType) {
+				case BINARY:
+				case BLOB:
+				case LONGVARBINARY:
+				case VARBINARY:
+					return DEFAULT_BLOB_SIZE;
+				case CHAR:
+				case CLOB:
+				case LONGNVARCHAR:
+				case LONGVARCHAR:
+				case NCHAR:
+				case NCLOB:
+				case NVARCHAR:
+				case VARCHAR:
+					return DEFAULT_CLOB_SIZE;
+				}
 			}
 		}
 		return columnSize;
@@ -126,6 +154,7 @@ public class ColumnConfig extends FieldConfig {
 		target.columnSize = columnSize;
 		target.columnType = columnType;
 		target.decimalDigits = decimalDigits;
+		target.keySequence = keySequence;
 		target.radix = radix;
 		super.copyTo(target);
 	}
@@ -193,6 +222,49 @@ public class ColumnConfig extends FieldConfig {
 			}
 		}
 		return super.getFieldType();
+	}
+
+	public Class<?> getJavaType() {
+		switch (getColumnType()) {
+		case CHAR:
+		case VARCHAR:
+		case LONGVARCHAR:
+			return String.class;
+		case NUMERIC:
+		case DECIMAL:
+			return BigDecimal.class;
+		case BIT:
+		case BOOLEAN:
+			return Boolean.class;
+		case TINYINT:
+		case SMALLINT:
+			return Short.class;
+		case INTEGER:
+			return Integer.class;
+		case BIGINT:
+			return Long.class;
+		case REAL:
+			return Float.class;
+		case FLOAT:
+		case DOUBLE:
+			return Double.class;
+		case BINARY:
+		case VARBINARY:
+		case LONGVARBINARY:
+			return byte[].class;
+		case DATE:
+			return Date.class;
+		case TIME:
+			return Time.class;
+		case TIMESTAMP:
+			return Timestamp.class;
+		case CLOB:
+			return Clob.class;
+		case BLOB:
+			return byte[].class;
+		default:
+			return Object.class;
+		}
 	}
 
 }

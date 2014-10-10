@@ -2,14 +2,13 @@ package com.tibco.as.db;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.MessageFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.tibco.as.io.IInputStream;
 import com.tibco.as.log.LogFactory;
 
-public class TableInputStream implements IInputStream<Object[]> {
+public class TableInputStream implements IInputStream {
 
 	private Logger log = LogFactory.getLog(TableInputStream.class);
 
@@ -72,17 +71,6 @@ public class TableInputStream implements IInputStream<Object[]> {
 		} catch (SQLException e) {
 			log.log(Level.SEVERE, "Could not get state of result set", e);
 			return false;
-		}
-	}
-
-	@Override
-	public String getName() {
-		try {
-			String tableName = resultSet.getMetaData().getTableName(1);
-			return MessageFormat.format("table ''{0}''", tableName);
-		} catch (SQLException e) {
-			log.log(Level.SEVERE, "Could not get result set metadata", e);
-			return "unkwown table";
 		}
 	}
 

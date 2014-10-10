@@ -66,6 +66,7 @@ public class DatabaseApplication extends AbstractApplication {
 				TableConfig tableConfig = new TableConfig();
 				tableConfig.setCatalog(table.getCatalog());
 				tableConfig.setCountSQL(table.getCountSQL());
+				tableConfig.setInsertSQL(table.getInsertSQL());
 				tableConfig.setTable(table.getName());
 				tableConfig.setSchema(table.getSchema());
 				tableConfig.setSelectSQL(table.getSelectSQL());
@@ -79,6 +80,7 @@ public class DatabaseApplication extends AbstractApplication {
 					columnConfig.setColumnSize(column.getSize());
 					columnConfig.setColumnType(column.getType());
 					columnConfig.setDecimalDigits(column.getDecimalDigits());
+					columnConfig.setKeySequence(column.getKeySequence());
 					columnConfig.setRadix(column.getRadix());
 					tableConfig.getFields().add(columnConfig);
 				}

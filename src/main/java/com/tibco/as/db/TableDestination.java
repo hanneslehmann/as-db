@@ -1,36 +1,35 @@
 package com.tibco.as.db;
 
-import java.math.BigDecimal;
-import java.sql.Clob;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import com.tibco.as.accessors.AccessorFactory;
-import com.tibco.as.accessors.ITupleAccessor;
-import com.tibco.as.convert.ConverterFactory;
-import com.tibco.as.convert.IConverter;
-import com.tibco.as.convert.UnsupportedConversionException;
-import com.tibco.as.convert.array.ArrayToTupleConverter;
-import com.tibco.as.convert.array.TupleToArrayConverter;
 import com.tibco.as.io.AbstractDestination;
 import com.tibco.as.io.FieldConfig;
 import com.tibco.as.io.IInputStream;
 import com.tibco.as.io.IOutputStream;
-import com.tibco.as.space.FieldDef;
-import com.tibco.as.space.SpaceDef;
-import com.tibco.as.space.Tuple;
 
-public class TableDestination extends AbstractDestination<Object[]> {
+public class TableDestination extends AbstractDestination {
 
-	private final static int DEFAULT_INSERT_BATCH_SIZE = 1000;
+	private static final String COLUMN_NAME = "COLUMN_NAME";
+	private static final String DATA_TYPE = "DATA_TYPE";
+	private static final String COLUMN_SIZE = "COLUMN_SIZE";
+	private static final String DECIMAL_DIGITS = "DECIMAL_DIGITS";
+	private static final String NUM_PREC_RADIX = "NUM_PREC_RADIX";
+	private static final String NULLABLE = "NULLABLE";
+	private static final String ORDINAL_POSITION = "ORDINAL_POSITION";
+	private static final String KEY_SEQ = "KEY_SEQ";
+	private static final char QUOTE = '\"';
+	private static final String SELECT = "SELECT {0} FROM {1}";
 
-	private ConverterFactory converterFactory = new ConverterFactory();
 	private DatabaseChannel channel;
 	private TableConfig config;
 
@@ -41,142 +40,239 @@ public class TableDestination extends AbstractDestination<Object[]> {
 	}
 
 	@Override
-	protected int getImportBatchSize() {
-		TableConfig tableConfig = (TableConfig) config;
-		if (tableConfig.getInsertBatchSize() == null) {
-			return DEFAULT_INSERT_BATCH_SIZE;
+	protected IOutputStream getOutputStream() throws SQLException {
+		ResultSet resultSet = channel.getTables(config);
+		try {
+			if (resultSet.next()) { // table already exists, populate config
+				List<FieldConfig> fields = new ArrayList<FieldConfig>();
+				for (FieldConfig field : getTableColumns()) {
+					ColumnConfig column = (ColumnConfig) field;
+					ResultSet columnRS = channel.getMetaData().getColumns(
+							config.getCatalog(), config.getSchema(),
+							config.getTable(), column.getColumnName());
+					Map<Integer, ColumnConfig> columns = new TreeMap<Integer, ColumnConfig>();
+					try {
+						while (columnRS.next()) {
+							ColumnConfig found = column.clone();
+							found.setDecimalDigits(columnRS
+									.getInt(DECIMAL_DIGITS));
+							found.setColumnName(columnRS.getString(COLUMN_NAME));
+							found.setColumnNullable(columnRS
+									.getBoolean(NULLABLE));
+							found.setRadix(columnRS.getInt(NUM_PREC_RADIX));
+							found.setColumnSize(columnRS.getInt(COLUMN_SIZE));
+							int dataType = columnRS.getInt(DATA_TYPE);
+							found.setColumnType(JDBCType.valueOf(dataType));
+							columns.put(columnRS.getInt(ORDINAL_POSITION),
+									found);
+						}
+					} finally {
+						columnRS.close();
+					}
+					fields.addAll(columns.values());
+				}
+				config.setFields(fields);
+				setPrimaryKeys();
+			} else {
+				String sql = getCreateSQL();
+				channel.execute(sql);
+			}
+		} finally {
+			resultSet.close();
 		}
-		return tableConfig.getInsertBatchSize();
-	}
-
-	@SuppressWarnings("rawtypes")
-	@Override
-	protected IConverter<Tuple, Object[]> getExportConverter(SpaceDef spaceDef)
-			throws UnsupportedConversionException {
-		List<FieldConfig> columns = config.getFields();
-		ITupleAccessor[] accessors = new ITupleAccessor[columns.size()];
-		IConverter[] converters = new IConverter[columns.size()];
-		for (int index = 0; index < columns.size(); index++) {
-			ColumnConfig column = (ColumnConfig) columns.get(index);
-			FieldDef fieldDef = spaceDef.getFieldDef(column.getFieldName());
-			accessors[index] = AccessorFactory.create(fieldDef);
-			converters[index] = converterFactory.getConverter(
-					config.getAttributes(), fieldDef,
-					getType(column.getColumnType()));
+		if (config.getInsertSQL() == null) {
+			String tableName = getFullyQualifiedName();
+			String[] columnNames = getColumnNames();
+			String[] questionMarks = new String[columnNames.length];
+			Arrays.fill(questionMarks, "?");
+			String sql = MessageFormat.format(
+					"INSERT INTO {0} ({1}) VALUES ({2})", tableName,
+					getCommaSeparated(columnNames),
+					getCommaSeparated(questionMarks));
+			config.setInsertSQL(sql);
 		}
-		return new TupleToArrayConverter<Object>(accessors, converters,
-				Object.class);
-	}
-
-	private Class<?> getType(JDBCType type) {
-		switch (type) {
-		case CHAR:
-		case VARCHAR:
-		case LONGVARCHAR:
-			return String.class;
-		case NUMERIC:
-		case DECIMAL:
-			return BigDecimal.class;
-		case BIT:
-		case BOOLEAN:
-			return Boolean.class;
-		case TINYINT:
-		case SMALLINT:
-			return Short.class;
-		case INTEGER:
-			return Integer.class;
-		case BIGINT:
-			return Long.class;
-		case REAL:
-			return Float.class;
-		case FLOAT:
-		case DOUBLE:
-			return Double.class;
-		case BINARY:
-		case VARBINARY:
-		case LONGVARBINARY:
-			return byte[].class;
-		case DATE:
-			return Date.class;
-		case TIME:
-			return Time.class;
-		case TIMESTAMP:
-			return Timestamp.class;
-		case CLOB:
-			return Clob.class;
-		case BLOB:
-			return byte[].class;
-		default:
-			return Object.class;
+		String sql = config.getInsertSQL();
+		PreparedStatement statement = channel.prepareStatement(sql);
+		IPreparedStatementAccessor[] accessors = getAccessors();
+		int batchSize = config.getTableBatchSize();
+		if (batchSize > 1) {
+			return new BatchTableOutputStream(statement, accessors, batchSize);
 		}
-	}
-
-	@Override
-	protected IOutputStream<Object[]> getOutputStream() throws SQLException {
-		if (channel.exists(config)) {
-			channel.populate(config);
-		} else {
-			channel.create(config);
-		}
-		PreparedStatement statement = channel.getInsertStatement(config);
-		IPreparedStatementAccessor[] accessors = channel.getAccessors(config);
 		return new TableOutputStream(statement, accessors);
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Override
-	protected IConverter<Object[], Tuple> getImportConverter(SpaceDef spaceDef)
-			throws UnsupportedConversionException {
-		List<FieldConfig> columns = config.getFields();
-		ITupleAccessor[] accessors = new ITupleAccessor[columns.size()];
-		IConverter[] converters = new IConverter[columns.size()];
-		for (int index = 0; index < columns.size(); index++) {
-			ColumnConfig column = (ColumnConfig) columns.get(index);
-			FieldDef fieldDef = spaceDef.getFieldDef(column.getFieldName());
-			accessors[index] = AccessorFactory.create(fieldDef);
-			converters[index] = converterFactory.getConverter(
-					config.getAttributes(), getType(column.getColumnType()),
-					fieldDef);
+	protected TableInputStream getInputStream() throws Exception {
+		if (config.getSelectSQL() == null) {
+			config.setSelectSQL(MessageFormat.format(SELECT,
+					getCommaSeparated(getColumnNames()),
+					getFullyQualifiedName()));
+			if (config.getCountSQL() == null) {
+				config.setCountSQL(MessageFormat.format(SELECT, "COUNT(*)",
+						getFullyQualifiedName()));
+			}
 		}
-		return new ArrayToTupleConverter<Object>(accessors, converters);
-	}
-
-	@Override
-	protected IInputStream<Object[]> getInputStream() throws Exception {
-		if (config.getFields().isEmpty() && config.getSelectSQL() == null) {
-			channel.populate(config);
-		}
-		IPreparedStatementAccessor[] accessors = channel.getAccessors(config);
-		long count = channel.getCount(config);
-		ResultSet resultSet = channel.select(config);
+		ResultSet resultSet = channel.executeQuery(config.getSelectSQL());
 		if (config.getFetchSize() != null) {
 			resultSet.setFetchSize(config.getFetchSize());
 		}
 		ResultSetMetaData metaData = resultSet.getMetaData();
-		for (int index = 0; index < metaData.getColumnCount(); index++) {
-			int columnIndex = index + 1;
-			ColumnConfig column = getColumn(config,
-					metaData.getColumnLabel(columnIndex));
-			column.setColumnSize(metaData.getPrecision(columnIndex));
-			column.setDecimalDigits(metaData.getScale(columnIndex));
-			column.setColumnNullable(metaData.isNullable(columnIndex) == ResultSetMetaData.columnNullable);
-			column.setColumnType(JDBCType.valueOf(metaData
-					.getColumnType(columnIndex)));
+		for (int index = 1; index <= metaData.getColumnCount(); index++) {
+			String columnName = metaData.getColumnName(index);
+			int precision = metaData.getPrecision(index);
+			int scale = metaData.getScale(index);
+			boolean nullable = metaData.isNullable(index) == ResultSetMetaData.columnNullable;
+			int dataType = metaData.getColumnType(index);
+			ColumnConfig column = config.getColumn(columnName);
+			column.setColumnSize(precision);
+			column.setDecimalDigits(scale);
+			column.setColumnNullable(nullable);
+			column.setColumnType(JDBCType.valueOf(dataType));
 		}
-		return new TableInputStream(resultSet, accessors, count);
+		setPrimaryKeys();
+		return new TableInputStream(resultSet, getAccessors(), getCount());
 	}
 
-	private ColumnConfig getColumn(TableConfig table, String columnName) {
-		for (FieldConfig field : table.getFields()) {
+	private IPreparedStatementAccessor[] getAccessors() {
+		Collection<IPreparedStatementAccessor> result = new ArrayList<IPreparedStatementAccessor>();
+		int columnIndex = 1;
+		for (FieldConfig field : config.getFields()) {
 			ColumnConfig column = (ColumnConfig) field;
-			if (columnName.equals(column.getColumnName())) {
-				return column;
-			}
+			result.add(getAccessor(columnIndex, column.getColumnType()));
+			columnIndex++;
 		}
-		ColumnConfig column = new ColumnConfig();
-		column.setColumnName(columnName);
-		table.getFields().add(column);
-		return column;
+		return result.toArray(new IPreparedStatementAccessor[result.size()]);
+	}
+
+	private IPreparedStatementAccessor getAccessor(int index, JDBCType type) {
+		switch (type) {
+		case BLOB:
+			return new BlobAccessor(index);
+		default:
+			return new DefaultAccessor(index, type.getType());
+		}
+	}
+
+	private long getCount() throws SQLException {
+		if (config.getCountSQL() == null) {
+			return IInputStream.UNKNOWN_SIZE;
+		}
+		ResultSet resultSet = channel.executeQuery(config.getCountSQL());
+		try {
+			if (resultSet.next()) {
+				return resultSet.getLong(1);
+			}
+			return IInputStream.UNKNOWN_SIZE;
+		} finally {
+			resultSet.close();
+		}
+	}
+
+	@Override
+	protected String getExportName() {
+		return config.getTable();
+	}
+
+	@Override
+	protected String getImportName() {
+		return config.getTable();
+	}
+
+	private String getFullyQualifiedName() {
+		String namespace = "";
+		if (config.getCatalog() != null) {
+			namespace += quote(config.getCatalog()) + ".";
+		}
+		if (config.getSchema() != null) {
+			namespace += quote(config.getSchema()) + ".";
+		}
+		return namespace + quote(config.getTable());
+	}
+
+	private String quote(String name) {
+		return QUOTE + name + QUOTE;
+	}
+
+	private String[] getColumnNames() {
+		List<FieldConfig> fields = config.getFields();
+		if (fields.isEmpty()) {
+			return new String[] { "*" };
+		}
+		Collection<String> columnNames = new ArrayList<String>();
+		for (FieldConfig field : fields) {
+			ColumnConfig column = (ColumnConfig) field;
+			columnNames.add(quote(column.getColumnName()));
+		}
+		return columnNames.toArray(new String[columnNames.size()]);
+	}
+
+	private String getCommaSeparated(String[] elements) {
+		String result = "";
+		for (int index = 0; index < elements.length; index++) {
+			if (index > 0) {
+				result += ", ";
+			}
+			result += elements[index];
+		}
+		return result;
+	}
+
+	private String getCreateSQL() throws SQLException {
+		String query = "";
+		query += "CREATE TABLE " + getFullyQualifiedName() + " (";
+		for (FieldConfig field : config.getFields()) {
+			ColumnConfig column = (ColumnConfig) field;
+			String columnName = quote(column.getColumnName());
+			JDBCType type = column.getColumnType();
+			String typeName = type.getName();
+			query += columnName + " " + typeName;
+			Integer size = column.getColumnSize();
+			if (size != null) {
+				query += "(";
+				query += size;
+				if (column.getDecimalDigits() != null) {
+					query += "," + column.getDecimalDigits();
+				}
+				query += ")";
+			}
+			if (!Boolean.TRUE.equals(column.getColumnNullable())) {
+				query += " not";
+			}
+			query += " null, ";
+		}
+		query += "Primary Key (";
+		int index = 0;
+		for (String key : config.getPrimaryKeys()) {
+			if (index > 0) {
+				query += ",";
+			}
+			query += quote(key);
+			index++;
+		}
+		query += ")"; // close primary key constraint
+		query += ")"; // close table def
+		return query;
+	}
+
+	private void setPrimaryKeys() throws SQLException {
+		ResultSet keyRS = channel.getMetaData().getPrimaryKeys(
+				config.getCatalog(), config.getSchema(), config.getTable());
+		try {
+			while (keyRS.next()) {
+				ColumnConfig column = config.getColumn(keyRS
+						.getString(COLUMN_NAME));
+				column.setKeySequence(keyRS.getShort(KEY_SEQ));
+			}
+		} finally {
+			keyRS.close();
+		}
+	}
+
+	private List<FieldConfig> getTableColumns() {
+		if (config.getFields().isEmpty()) {
+			return Arrays.asList((FieldConfig) new ColumnConfig());
+		}
+		return config.getFields();
 	}
 
 }

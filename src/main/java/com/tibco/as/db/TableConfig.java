@@ -2,44 +2,69 @@ package com.tibco.as.db;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.tibco.as.io.DestinationConfig;
+import com.tibco.as.io.FieldConfig;
 
 public class TableConfig extends DestinationConfig {
 
+	private final static int DEFAULT_INSERT_BATCH_SIZE = 1000;
+
 	private String selectSQL;
 	private String countSQL;
+	private String insertSQL;
 	private String catalog;
 	private String schema;
 	private String table;
 	private TableType type;
 	private Integer fetchSize;
-	private Integer insertBatchSize;
-	private Collection<String> primaryKeys;
-
-	public Collection<String> getPrimaryKeys() {
-		if (primaryKeys == null) {
-			Collection<String> primaryKeys = new ArrayList<String>();
-			for (String key : getKeys()) {
-				ColumnConfig column = (ColumnConfig) getField(key);
-				primaryKeys.add(column.getColumnName());
-			}
-			return primaryKeys;
-		}
-		return primaryKeys;
-	}
+	private Integer tableBatchSize;
 
 	@Override
 	public Collection<String> getKeys() {
 		Collection<String> keys = super.getKeys();
 		if (keys == null) {
-			return getPrimaryKeys();
+			keys = new ArrayList<String>();
+			for (String primaryKey : getPrimaryKeys()) {
+				keys.add(getColumn(primaryKey).getFieldName());
+			}
 		}
 		return keys;
 	}
 
-	public void setPrimaryKeys(Collection<String> primaryKeys) {
-		this.primaryKeys = primaryKeys;
+	public ColumnConfig getColumn(String columnName) {
+		for (FieldConfig field : getFields()) {
+			ColumnConfig column = (ColumnConfig) field;
+			if (columnName.equals(column.getColumnName())) {
+				return column;
+			}
+		}
+		ColumnConfig column = new ColumnConfig();
+		column.setColumnName(columnName);
+		getFields().add(column);
+		return column;
+	}
+
+	public Collection<String> getPrimaryKeys() {
+		Map<Short, String> keyMap = new TreeMap<Short, String>();
+		for (FieldConfig field : getFields()) {
+			ColumnConfig column = (ColumnConfig) field;
+			if (column.getKeySequence() == null) {
+				continue;
+			}
+			keyMap.put(column.getKeySequence(), column.getColumnName());
+		}
+		if (keyMap.isEmpty()) {
+			Collection<String> primaryKeys = new ArrayList<String>();
+			for (String key : super.getKeys()) {
+				ColumnConfig column = (ColumnConfig) getField(key);
+				primaryKeys.add(column.getColumnName());
+			}
+			return primaryKeys;
+		}
+		return keyMap.values();
 	}
 
 	public String getSelectSQL() {
@@ -56,6 +81,14 @@ public class TableConfig extends DestinationConfig {
 
 	public void setCountSQL(String countSQL) {
 		this.countSQL = countSQL;
+	}
+
+	public String getInsertSQL() {
+		return insertSQL;
+	}
+
+	public void setInsertSQL(String insertSQL) {
+		this.insertSQL = insertSQL;
 	}
 
 	public String getCatalog() {
@@ -86,6 +119,9 @@ public class TableConfig extends DestinationConfig {
 	}
 
 	public TableType getType() {
+		if (type == null) {
+			return TableType.TABLE;
+		}
 		return type;
 	}
 
@@ -101,12 +137,15 @@ public class TableConfig extends DestinationConfig {
 		this.fetchSize = fetchSize;
 	}
 
-	public Integer getInsertBatchSize() {
-		return insertBatchSize;
+	public int getTableBatchSize() {
+		if (tableBatchSize == null) {
+			return DEFAULT_INSERT_BATCH_SIZE;
+		}
+		return tableBatchSize;
 	}
 
-	public void setInsertBatchSize(Integer insertBatchSize) {
-		this.insertBatchSize = insertBatchSize;
+	public void setTableBatchSize(Integer batchSize) {
+		this.tableBatchSize = batchSize;
 	}
 
 	@Override
@@ -120,9 +159,8 @@ public class TableConfig extends DestinationConfig {
 		target.catalog = catalog;
 		target.countSQL = countSQL;
 		target.fetchSize = fetchSize;
-		target.insertBatchSize = insertBatchSize;
-		target.primaryKeys = primaryKeys == null ? null
-				: new ArrayList<String>(primaryKeys);
+		target.tableBatchSize = tableBatchSize;
+		target.insertSQL = insertSQL;
 		target.schema = schema;
 		target.selectSQL = selectSQL;
 		target.table = table;

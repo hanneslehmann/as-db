@@ -1,35 +1,31 @@
 package com.tibco.as.db;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.tibco.as.io.ChannelConfig;
 import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.cli.AbstractImportCommand;
+import com.tibco.as.io.cli.ImportCommand;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
-public class DatabaseImportCommand extends AbstractImportCommand {
+public class DatabaseImportCommand extends ImportCommand {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
-
 	@Parameter(names = { "-schema" }, description = "Schema name")
 	private String schema;
-
 	@Parameter(names = { "-fetch_size" }, description = "Fetch size")
 	private Integer fetchSize;
-
 	@Parameter(names = { "-select_sql" }, description = "Select query")
 	private String selectSQL;
-
 	@Parameter(names = { "-count_sql" }, description = "Select count query")
 	private String countSQL;
-
+	@Parameter(names = { "-insert_sql" }, description = "Insert SQL statement")
+	private String insertSQL;
 	@Parameter(names = { "-type" }, description = "Table type", converter = TableTypeConverter.class, validateWith = TableTypeConverter.class)
 	private TableType tableType;
-
 	@Parameter(description = "The list of tables to import")
 	private List<String> tableNames = new ArrayList<String>();
 
@@ -51,6 +47,9 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 		if (table.getCountSQL() == null) {
 			table.setCountSQL(countSQL);
 		}
+		if (table.getInsertSQL() == null) {
+			table.setInsertSQL(insertSQL);
+		}
 		if (table.getType() == null) {
 			table.setType(tableType);
 		}
@@ -58,11 +57,13 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 	}
 
 	@Override
-	protected void configure(Collection<DestinationConfig> destinations) {
+	public void configure(ChannelConfig config) throws Exception {
 		for (String tableName : tableNames) {
 			TableConfig table = new TableConfig();
 			table.setTable(tableName);
-			destinations.add(table);
+			config.getDestinations().add(table);
 		}
+		super.configure(config);
 	}
+
 }

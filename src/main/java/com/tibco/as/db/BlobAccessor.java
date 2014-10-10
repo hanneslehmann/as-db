@@ -1,11 +1,9 @@
-package com.tibco.as.db.accessors;
+package com.tibco.as.db;
 
 import java.sql.Blob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
-import com.tibco.as.db.IPreparedStatementAccessor;
 
 public class BlobAccessor implements IPreparedStatementAccessor {
 

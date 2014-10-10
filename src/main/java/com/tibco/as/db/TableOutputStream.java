@@ -1,13 +1,11 @@
 package com.tibco.as.db;
 
-import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.List;
 
 import com.tibco.as.io.IOutputStream;
 
-public class TableOutputStream implements IOutputStream<Object[]> {
+public class TableOutputStream implements IOutputStream {
 
 	private PreparedStatement statement;
 	private IPreparedStatementAccessor[] accessors;
@@ -24,28 +22,20 @@ public class TableOutputStream implements IOutputStream<Object[]> {
 
 	@Override
 	public void close() throws Exception {
+		close(statement);
+	}
+
+	protected void close(PreparedStatement statement) throws SQLException {
 		statement.close();
-		statement = null;
 	}
 
 	@Override
-	public void write(List<Object[]> elements) throws Exception {
-		for (Object[] element : elements) {
-			set(element);
-			statement.addBatch();
-		}
-		try {
-			statement.executeBatch();
-		} catch (BatchUpdateException e) {
-			throw e.getNextException();
-		} catch (SQLException e) {
-			throw e;
-		}
+	public void write(Object element) throws Exception {
+		set((Object[]) element);
+		execute(statement);
 	}
 
-	@Override
-	public void write(Object[] element) throws Exception {
-		set(element);
+	protected void execute(PreparedStatement statement) throws SQLException {
 		statement.execute();
 	}
 

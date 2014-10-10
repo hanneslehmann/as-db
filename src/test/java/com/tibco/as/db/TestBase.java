@@ -109,13 +109,6 @@ public class TestBase {
 		return spaceDef;
 	}
 
-	protected DatabaseConfig createDatabaseConfig() {
-		DatabaseConfig database = new DatabaseConfig();
-		database.setDriver(DRIVER);
-		database.setURL(URL);
-		return database;
-	}
-
 	protected Tuple createTuple(int id) {
 		Tuple tuple = Tuple.create();
 		tuple.putLong(FIELD_NAME1, id);
@@ -182,5 +175,9 @@ public class TestBase {
 			space.put(createTuple(index));
 		}
 		return space;
+	}
+
+	protected void execute(String command) throws Exception {
+		DatabaseApplication.main(command.split(" "));
 	}
 }
