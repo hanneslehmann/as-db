@@ -14,12 +14,16 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.tibco.as.io.AbstractChannel;
 import com.tibco.as.io.DestinationConfig;
+import com.tibco.as.io.FieldConfig;
 import com.tibco.as.io.IDestination;
 import com.tibco.as.log.LogFactory;
 
@@ -29,6 +33,14 @@ public class DatabaseChannel extends AbstractChannel {
 	private static final String TABLE_CAT = "TABLE_CAT";
 	private static final String TABLE_SCHEM = "TABLE_SCHEM";
 	private static final String TABLE_TYPE = "TABLE_TYPE";
+	private static final String COLUMN_NAME = "COLUMN_NAME";
+	private static final String COLUMN_SIZE = "COLUMN_SIZE";
+	private static final String COLUMN_DATA_TYPE = "DATA_TYPE";
+	private static final String COLUMN_DECIMAL_DIGITS = "DECIMAL_DIGITS";
+	private static final String KEY_SEQ = "KEY_SEQ";
+	private static final String NULLABLE = "NULLABLE";
+	private static final String COLUMN_NUM_PREC_RADIX = "NUM_PREC_RADIX";
+	private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
 
 	private Logger log = LogFactory.getLog(DatabaseChannel.class);
 	private DatabaseConfig config;
@@ -110,23 +122,19 @@ public class DatabaseChannel extends AbstractChannel {
 			DestinationConfig config) throws Exception {
 		Collection<DestinationConfig> configs = new ArrayList<DestinationConfig>();
 		TableConfig table = (TableConfig) config;
-		ResultSet resultSet = getTables(table);
-		try {
-			while (resultSet.next()) {
-				TableConfig found = table.clone();
-				found.setCatalog(resultSet.getString(TABLE_CAT));
-				found.setTable(resultSet.getString(TABLE_NAME));
-				found.setSchema(resultSet.getString(TABLE_SCHEM));
-				found.setType(TableType.valueOf(resultSet.getString(TABLE_TYPE)));
-				configs.add(found);
-			}
-		} finally {
-			resultSet.close();
-		}
+		configs.addAll(getTables(table));
 		return configs;
 	}
 
-	public ResultSet getTables(TableConfig table) throws SQLException {
+	private Collection<FieldConfig> getTableColumns(TableConfig config) {
+		if (config.getFields().isEmpty()) {
+			return Arrays.asList((FieldConfig) new ColumnConfig());
+		}
+		return config.getFields();
+	}
+
+	public Collection<TableConfig> getTables(TableConfig table)
+			throws SQLException {
 		String catalog = table.getCatalog();
 		String schema = table.getSchema();
 		String name = table.getTable();
@@ -134,12 +142,63 @@ public class DatabaseChannel extends AbstractChannel {
 		log.log(Level.FINE,
 				"Retrieving table descriptions matching catalog={0} schema={1} name={2} types={3}",
 				new Object[] { catalog, schema, name, Arrays.toString(types) });
-		return getMetaData().getTables(catalog, schema, name, types);
-	}
-
-	public PreparedStatement prepareStatement(String sql) throws SQLException {
-		log.log(Level.FINE, "Preparing statement: {0}", sql);
-		return connection.prepareStatement(sql);
+		ResultSet resultSet = getMetaData().getTables(catalog, schema, name,
+				types);
+		Collection<TableConfig> tables = new ArrayList<TableConfig>();
+		try {
+			while (resultSet.next()) {
+				TableConfig found = table.clone();
+				found.setCatalog(resultSet.getString(TABLE_CAT));
+				found.setTable(resultSet.getString(TABLE_NAME));
+				found.setSchema(resultSet.getString(TABLE_SCHEM));
+				found.setType(TableType.valueOf(resultSet.getString(TABLE_TYPE)));
+				tables.add(found);
+			}
+		} finally {
+			resultSet.close();
+		}
+		for (TableConfig config : tables) {
+			List<FieldConfig> fields = new ArrayList<FieldConfig>();
+			for (FieldConfig field : getTableColumns(config)) {
+				ColumnConfig column = (ColumnConfig) field;
+				ResultSet columnRS = getMetaData().getColumns(
+						config.getCatalog(), config.getSchema(),
+						config.getTable(), column.getColumnName());
+				Map<Integer, ColumnConfig> columns = new TreeMap<Integer, ColumnConfig>();
+				try {
+					while (columnRS.next()) {
+						ColumnConfig found = column.clone();
+						found.setDecimalDigits(columnRS
+								.getInt(COLUMN_DECIMAL_DIGITS));
+						found.setColumnName(columnRS.getString(COLUMN_NAME));
+						found.setColumnNullable(columnRS.getBoolean(NULLABLE));
+						found.setRadix(columnRS.getInt(COLUMN_NUM_PREC_RADIX));
+						found.setColumnSize(columnRS.getInt(COLUMN_SIZE));
+						int dataType = columnRS.getInt(COLUMN_DATA_TYPE);
+						found.setColumnType(JDBCType.valueOf(dataType));
+						int ordinalPosition = columnRS
+								.getInt(COLUMN_ORDINAL_POSITION);
+						columns.put(ordinalPosition, found);
+					}
+				} finally {
+					columnRS.close();
+				}
+				fields.addAll(columns.values());
+			}
+			config.setFields(fields);
+			ResultSet keyRS = getMetaData().getPrimaryKeys(config.getCatalog(),
+					config.getSchema(), config.getTable());
+			try {
+				while (keyRS.next()) {
+					String columnName = keyRS.getString(COLUMN_NAME);
+					ColumnConfig column = config.getColumn(columnName);
+					column.setKeySequence(keyRS.getShort(KEY_SEQ));
+				}
+			} finally {
+				keyRS.close();
+			}
+		}
+		return tables;
 	}
 
 	public void execute(String sql) throws SQLException {
@@ -150,5 +209,9 @@ public class DatabaseChannel extends AbstractChannel {
 		} finally {
 			statement.close();
 		}
+	}
+
+	public PreparedStatement prepareStatement(String sql) throws SQLException {
+		return connection.prepareStatement(sql);
 	}
 }

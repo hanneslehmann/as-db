@@ -72,7 +72,7 @@ public class DatabaseApplication extends AbstractApplication {
 				tableConfig.setSelectSQL(table.getSelectSQL());
 				tableConfig.setSpace(table.getSpace());
 				tableConfig.setType(table.getType());
-				for (Column column : table.getColumns()) {
+				for (Column column : table.columns) {
 					ColumnConfig columnConfig = new ColumnConfig();
 					columnConfig.setFieldName(column.getField());
 					columnConfig.setColumnName(column.getName());

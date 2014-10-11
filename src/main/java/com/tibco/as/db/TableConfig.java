@@ -2,6 +2,7 @@ package com.tibco.as.db;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -11,6 +12,7 @@ import com.tibco.as.io.FieldConfig;
 public class TableConfig extends DestinationConfig {
 
 	private final static int DEFAULT_INSERT_BATCH_SIZE = 1000;
+	private final static char QUOTE = '\"';
 
 	private String selectSQL;
 	private String countSQL;
@@ -35,8 +37,7 @@ public class TableConfig extends DestinationConfig {
 	}
 
 	public ColumnConfig getColumn(String columnName) {
-		for (FieldConfig field : getFields()) {
-			ColumnConfig column = (ColumnConfig) field;
+		for (ColumnConfig column : getColumns()) {
 			if (columnName.equals(column.getColumnName())) {
 				return column;
 			}
@@ -49,8 +50,7 @@ public class TableConfig extends DestinationConfig {
 
 	public Collection<String> getPrimaryKeys() {
 		Map<Short, String> keyMap = new TreeMap<Short, String>();
-		for (FieldConfig field : getFields()) {
-			ColumnConfig column = (ColumnConfig) field;
+		for (ColumnConfig column : getColumns()) {
 			if (column.getKeySequence() == null) {
 				continue;
 			}
@@ -182,4 +182,38 @@ public class TableConfig extends DestinationConfig {
 		return new ColumnConfig();
 	}
 
+	public String getFullyQualifiedName() {
+		String namespace = "";
+		if (getCatalog() != null) {
+			namespace += quote(getCatalog()) + ".";
+		}
+		if (getSchema() != null) {
+			namespace += quote(getSchema()) + ".";
+		}
+		return namespace + quote(getTable());
+	}
+
+	public String quote(String name) {
+		return QUOTE + name + QUOTE;
+	}
+
+	public String[] getColumnNames() {
+		Collection<ColumnConfig> columns = getColumns();
+		if (columns.isEmpty()) {
+			return new String[] { "*" };
+		}
+		Collection<String> columnNames = new ArrayList<String>();
+		for (ColumnConfig column : columns) {
+			columnNames.add(quote(column.getColumnName()));
+		}
+		return columnNames.toArray(new String[columnNames.size()]);
+	}
+
+	public List<ColumnConfig> getColumns() {
+		List<ColumnConfig> columns = new ArrayList<ColumnConfig>();
+		for (FieldConfig field : getFields()) {
+			columns.add((ColumnConfig) field);
+		}
+		return columns;
+	}
 }
