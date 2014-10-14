@@ -6,10 +6,10 @@ import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 
-import com.tibco.as.io.FieldConfig;
+import com.tibco.as.convert.Field;
 import com.tibco.as.space.FieldDef.FieldType;
 
-public class ColumnConfig extends FieldConfig {
+public class ColumnConfig extends Field {
 
 	private static final int DEFAULT_BLOB_SIZE = 255;
 	private static final int DEFAULT_CLOB_SIZE = 255;
@@ -24,6 +24,10 @@ public class ColumnConfig extends FieldConfig {
 	private Integer radix;
 	private Boolean columnNullable;
 	private Short keySequence;
+
+	public ColumnConfig(TableConfig space) {
+		super(space);
+	}
 
 	public Short getKeySequence() {
 		return keySequence;
@@ -143,7 +147,7 @@ public class ColumnConfig extends FieldConfig {
 
 	@Override
 	public ColumnConfig clone() {
-		ColumnConfig clone = new ColumnConfig();
+		ColumnConfig clone = new ColumnConfig((TableConfig) getSpace());
 		copyTo(clone);
 		return clone;
 	}

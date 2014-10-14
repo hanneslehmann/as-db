@@ -16,8 +16,8 @@ public class TableInputStream extends TableStream implements IInputStream {
 	private TableConfig config;
 	private ResultSet resultSet;
 	private IPreparedStatementAccessor[] accessors;
-	private long position;
-	private long count;
+	private Long position;
+	private Long count;
 
 	public TableInputStream(DatabaseChannel channel, TableConfig config) {
 		super(config);
@@ -46,25 +46,26 @@ public class TableInputStream extends TableStream implements IInputStream {
 		}
 		accessors = getAccessors();
 		count = getCount();
+		position = 0L;
 	}
 
-	private long getCount() throws SQLException {
+	private Long getCount() throws SQLException {
 		if (config.getCountSQL() == null) {
-			return IInputStream.UNKNOWN_SIZE;
+			return null;
 		}
 		ResultSet resultSet = channel.executeQuery(config.getCountSQL());
 		try {
 			if (resultSet.next()) {
 				return resultSet.getLong(1);
 			}
-			return IInputStream.UNKNOWN_SIZE;
+			return null;
 		} finally {
 			resultSet.close();
 		}
 	}
 
 	@Override
-	public long size() {
+	public Long size() {
 		return count;
 	}
 
@@ -82,7 +83,7 @@ public class TableInputStream extends TableStream implements IInputStream {
 	}
 
 	@Override
-	public long getPosition() {
+	public Long getPosition() {
 		return position;
 	}
 

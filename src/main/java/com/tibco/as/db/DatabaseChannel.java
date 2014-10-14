@@ -21,9 +21,9 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.tibco.as.convert.Field;
 import com.tibco.as.io.AbstractChannel;
 import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.FieldConfig;
 import com.tibco.as.io.IDestination;
 import com.tibco.as.log.LogFactory;
 
@@ -118,17 +118,17 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	protected Collection<DestinationConfig> getImportConfigs(
-			DestinationConfig config) throws Exception {
-		Collection<DestinationConfig> configs = new ArrayList<DestinationConfig>();
-		TableConfig table = (TableConfig) config;
-		configs.addAll(getTables(table));
-		return configs;
+	protected Collection<? extends DestinationConfig> discover(
+			DestinationConfig destination) throws Exception {
+		if (destination.isImport()) {
+			return getTables((TableConfig) destination);
+		}
+		return super.discover(destination);
 	}
 
-	private Collection<FieldConfig> getTableColumns(TableConfig config) {
+	private Collection<Field> getTableColumns(TableConfig config) {
 		if (config.getFields().isEmpty()) {
-			return Arrays.asList((FieldConfig) new ColumnConfig());
+			return Arrays.asList((Field) new ColumnConfig(config));
 		}
 		return config.getFields();
 	}
@@ -158,8 +158,8 @@ public class DatabaseChannel extends AbstractChannel {
 			resultSet.close();
 		}
 		for (TableConfig config : tables) {
-			List<FieldConfig> fields = new ArrayList<FieldConfig>();
-			for (FieldConfig field : getTableColumns(config)) {
+			List<Field> fields = new ArrayList<Field>();
+			for (Field field : getTableColumns(config)) {
 				ColumnConfig column = (ColumnConfig) field;
 				ResultSet columnRS = getMetaData().getColumns(
 						config.getCatalog(), config.getSchema(),

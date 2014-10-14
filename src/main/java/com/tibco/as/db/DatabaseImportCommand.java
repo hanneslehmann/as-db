@@ -7,10 +7,10 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.tibco.as.io.ChannelConfig;
 import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.cli.ImportCommand;
+import com.tibco.as.io.cli.AbstractImportCommand;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
-public class DatabaseImportCommand extends ImportCommand {
+public class DatabaseImportCommand extends AbstractImportCommand {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;

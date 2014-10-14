@@ -52,7 +52,7 @@ public class TestImport extends TestBase {
 		}
 		getConnection().commit();
 		preparedStatement.close();
-		execute("-discovery tcp -driver org.h2.Driver -url jdbc:h2:mem:test import -distribution_role seeder MySpace");
+		execute("-discovery tcp -driver org.h2.Driver -url jdbc:h2:mem:test import -distribution_role seeder %");
 		assertSpace();
 	}
 

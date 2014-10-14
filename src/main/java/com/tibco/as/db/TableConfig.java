@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.tibco.as.convert.Field;
 import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.FieldConfig;
 
 public class TableConfig extends DestinationConfig {
 
@@ -27,8 +27,7 @@ public class TableConfig extends DestinationConfig {
 	@Override
 	public Collection<String> getKeys() {
 		Collection<String> keys = super.getKeys();
-		if (keys == null) {
-			keys = new ArrayList<String>();
+		if (keys.isEmpty()) {
 			for (String primaryKey : getPrimaryKeys()) {
 				keys.add(getColumn(primaryKey).getFieldName());
 			}
@@ -42,7 +41,7 @@ public class TableConfig extends DestinationConfig {
 				return column;
 			}
 		}
-		ColumnConfig column = new ColumnConfig();
+		ColumnConfig column = new ColumnConfig(this);
 		column.setColumnName(columnName);
 		getFields().add(column);
 		return column;
@@ -178,8 +177,8 @@ public class TableConfig extends DestinationConfig {
 	}
 
 	@Override
-	public ColumnConfig createFieldConfig() {
-		return new ColumnConfig();
+	public ColumnConfig createField() {
+		return new ColumnConfig(this);
 	}
 
 	public String getFullyQualifiedName() {
@@ -211,7 +210,7 @@ public class TableConfig extends DestinationConfig {
 
 	public List<ColumnConfig> getColumns() {
 		List<ColumnConfig> columns = new ArrayList<ColumnConfig>();
-		for (FieldConfig field : getFields()) {
+		for (Field field : getFields()) {
 			columns.add((ColumnConfig) field);
 		}
 		return columns;
