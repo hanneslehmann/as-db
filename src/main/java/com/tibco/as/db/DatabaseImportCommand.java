@@ -59,9 +59,8 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 	@Override
 	public void configure(ChannelConfig config) throws Exception {
 		for (String tableName : tableNames) {
-			TableConfig table = new TableConfig();
+			TableConfig table = (TableConfig) config.addDestinationConfig();
 			table.setTable(tableName);
-			config.getDestinations().add(table);
 		}
 		super.configure(config);
 	}

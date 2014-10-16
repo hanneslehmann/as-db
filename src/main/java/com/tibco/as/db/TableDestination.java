@@ -21,11 +21,6 @@ public class TableDestination extends AbstractDestination {
 	}
 
 	@Override
-	public DatabaseChannel getChannel() {
-		return channel;
-	}
-
-	@Override
 	protected IOutputStream createOutputStream() throws SQLException {
 		if (config.getInsertSQL() == null) {
 			String tableName = config.getFullyQualifiedName();

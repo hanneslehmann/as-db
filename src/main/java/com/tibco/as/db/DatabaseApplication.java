@@ -63,7 +63,8 @@ public class DatabaseApplication extends AbstractApplication {
 			FileInputStream in = new FileInputStream(config);
 			Database database = JAXB.unmarshal(in, Database.class);
 			for (Table table : database.getTables()) {
-				TableConfig tableConfig = new TableConfig();
+				TableConfig tableConfig = (TableConfig) databaseConfig
+						.addDestinationConfig();
 				tableConfig.setCatalog(table.getCatalog());
 				tableConfig.setCountSQL(table.getCountSQL());
 				tableConfig.setInsertSQL(table.getInsertSQL());
@@ -73,7 +74,8 @@ public class DatabaseApplication extends AbstractApplication {
 				tableConfig.setSpace(table.getSpace());
 				tableConfig.setType(table.getType());
 				for (Column column : table.columns) {
-					ColumnConfig columnConfig = new ColumnConfig(tableConfig);
+					ColumnConfig columnConfig = (ColumnConfig) tableConfig
+							.addField();
 					columnConfig.setFieldName(column.getField());
 					columnConfig.setColumnName(column.getName());
 					columnConfig.setColumnNullable(column.isNullable());
@@ -82,9 +84,7 @@ public class DatabaseApplication extends AbstractApplication {
 					columnConfig.setDecimalDigits(column.getDecimalDigits());
 					columnConfig.setKeySequence(column.getKeySequence());
 					columnConfig.setRadix(column.getRadix());
-					tableConfig.getFields().add(columnConfig);
 				}
-				databaseConfig.getDestinations().add(tableConfig);
 			}
 		}
 		return databaseConfig;

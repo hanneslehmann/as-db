@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.tibco.as.convert.Field;
+import com.tibco.as.io.ChannelConfig;
 import com.tibco.as.io.DestinationConfig;
 
 public class TableConfig extends DestinationConfig {
@@ -23,6 +24,11 @@ public class TableConfig extends DestinationConfig {
 	private TableType type;
 	private Integer fetchSize;
 	private Integer tableBatchSize;
+	private ChannelConfig channel;
+
+	public TableConfig(ChannelConfig channel) {
+		this.channel = channel;
+	}
 
 	@Override
 	public Collection<String> getKeys() {
@@ -41,9 +47,8 @@ public class TableConfig extends DestinationConfig {
 				return column;
 			}
 		}
-		ColumnConfig column = new ColumnConfig(this);
+		ColumnConfig column = (ColumnConfig) addField();
 		column.setColumnName(columnName);
-		getFields().add(column);
 		return column;
 	}
 
@@ -149,7 +154,7 @@ public class TableConfig extends DestinationConfig {
 
 	@Override
 	public TableConfig clone() {
-		TableConfig export = new TableConfig();
+		TableConfig export = new TableConfig(channel);
 		copyTo(export);
 		return export;
 	}
@@ -177,8 +182,8 @@ public class TableConfig extends DestinationConfig {
 	}
 
 	@Override
-	public ColumnConfig createField() {
-		return new ColumnConfig(this);
+	protected ColumnConfig newField() {
+		return new ColumnConfig();
 	}
 
 	public String getFullyQualifiedName() {
@@ -215,4 +220,5 @@ public class TableConfig extends DestinationConfig {
 		}
 		return columns;
 	}
+
 }

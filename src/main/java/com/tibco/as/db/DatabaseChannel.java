@@ -14,7 +14,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
@@ -52,9 +51,9 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	public void open() throws Exception {
+	protected void open() throws Exception {
 		String url = config.getURL();
-		log.log(Level.INFO, "Opening connection to database {0}", url);
+		log.info("Connecting to database");
 		Properties props = new Properties();
 		if (config.getUser() != null) {
 			props.put("user", config.getUser());
@@ -87,12 +86,12 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	public void close() throws Exception {
+	protected void close() throws Exception {
 		super.close();
 		if (connection == null) {
 			return;
 		}
-		log.info("Closing database connection");
+		log.info("Disconnecting from database");
 		connection.close();
 		connection = null;
 	}
@@ -118,17 +117,21 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	protected Collection<? extends DestinationConfig> discover(
-			DestinationConfig destination) throws Exception {
-		if (destination.isImport()) {
-			return getTables((TableConfig) destination);
+	protected void discover() throws Exception {
+		for (DestinationConfig destination : config.getDestinations()) {
+			if (destination.isImport()) {
+				config.removeDestinationConfig(destination);
+				for (TableConfig table : getTables((TableConfig) destination)) {
+					config.addDestinationConfig(table);
+				}
+			}
 		}
-		return super.discover(destination);
+		super.discover();
 	}
 
 	private Collection<Field> getTableColumns(TableConfig config) {
 		if (config.getFields().isEmpty()) {
-			return Arrays.asList((Field) new ColumnConfig(config));
+			config.addField();
 		}
 		return config.getFields();
 	}
@@ -158,13 +161,13 @@ public class DatabaseChannel extends AbstractChannel {
 			resultSet.close();
 		}
 		for (TableConfig config : tables) {
-			List<Field> fields = new ArrayList<Field>();
+			Collection<Field> columns = new ArrayList<Field>();
 			for (Field field : getTableColumns(config)) {
 				ColumnConfig column = (ColumnConfig) field;
 				ResultSet columnRS = getMetaData().getColumns(
 						config.getCatalog(), config.getSchema(),
 						config.getTable(), column.getColumnName());
-				Map<Integer, ColumnConfig> columns = new TreeMap<Integer, ColumnConfig>();
+				Map<Integer, ColumnConfig> columnMap = new TreeMap<Integer, ColumnConfig>();
 				try {
 					while (columnRS.next()) {
 						ColumnConfig found = column.clone();
@@ -178,14 +181,14 @@ public class DatabaseChannel extends AbstractChannel {
 						found.setColumnType(JDBCType.valueOf(dataType));
 						int ordinalPosition = columnRS
 								.getInt(COLUMN_ORDINAL_POSITION);
-						columns.put(ordinalPosition, found);
+						columnMap.put(ordinalPosition, found);
 					}
 				} finally {
 					columnRS.close();
 				}
-				fields.addAll(columns.values());
+				columns.addAll(columnMap.values());
 			}
-			config.setFields(fields);
+			config.setFields(columns);
 			ResultSet keyRS = getMetaData().getPrimaryKeys(config.getCatalog(),
 					config.getSchema(), config.getTable());
 			try {

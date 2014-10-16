@@ -25,10 +25,6 @@ public class ColumnConfig extends Field {
 	private Boolean columnNullable;
 	private Short keySequence;
 
-	public ColumnConfig(TableConfig space) {
-		super(space);
-	}
-
 	public Short getKeySequence() {
 		return keySequence;
 	}
@@ -147,20 +143,22 @@ public class ColumnConfig extends Field {
 
 	@Override
 	public ColumnConfig clone() {
-		ColumnConfig clone = new ColumnConfig((TableConfig) getSpace());
+		ColumnConfig clone = new ColumnConfig();
 		copyTo(clone);
 		return clone;
 	}
 
-	public void copyTo(ColumnConfig target) {
-		target.columnName = columnName;
-		target.columnNullable = columnNullable;
-		target.columnSize = columnSize;
-		target.columnType = columnType;
-		target.decimalDigits = decimalDigits;
-		target.keySequence = keySequence;
-		target.radix = radix;
-		super.copyTo(target);
+	@Override
+	public void copyTo(Field field) {
+		ColumnConfig column = (ColumnConfig) field;
+		column.columnName = columnName;
+		column.columnNullable = columnNullable;
+		column.columnSize = columnSize;
+		column.columnType = columnType;
+		column.decimalDigits = decimalDigits;
+		column.keySequence = keySequence;
+		column.radix = radix;
+		super.copyTo(column);
 	}
 
 	@Override
@@ -183,7 +181,11 @@ public class ColumnConfig extends Field {
 
 	@Override
 	public FieldType getFieldType() {
-		if (super.getFieldType() == null) {
+		FieldType fieldType = super.getFieldType();
+		if (fieldType == null) {
+			if (columnType == null) {
+				return null;
+			}
 			switch (columnType) {
 			case CHAR:
 			case CLOB:
@@ -225,7 +227,7 @@ public class ColumnConfig extends Field {
 				return FieldType.STRING;
 			}
 		}
-		return super.getFieldType();
+		return fieldType;
 	}
 
 	public Class<?> getJavaType() {
@@ -270,5 +272,4 @@ public class ColumnConfig extends Field {
 			return Object.class;
 		}
 	}
-
 }
