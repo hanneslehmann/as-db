@@ -9,13 +9,13 @@ import java.sql.Timestamp;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.tibco.as.io.Utils;
 import com.tibco.as.space.ASException;
 import com.tibco.as.space.FieldDef.FieldType;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
 import com.tibco.as.space.browser.Browser;
 import com.tibco.as.space.browser.BrowserDef.BrowserType;
+import com.tibco.as.util.Utils;
 
 public class TestImport extends TestBase {
 

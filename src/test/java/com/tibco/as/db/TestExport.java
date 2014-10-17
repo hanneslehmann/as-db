@@ -9,8 +9,8 @@ import java.text.MessageFormat;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.tibco.as.io.Utils;
 import com.tibco.as.space.Space;
+import com.tibco.as.util.Utils;
 
 public class TestExport extends TestBase {
 
