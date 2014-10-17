@@ -51,7 +51,7 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	protected void open() throws Exception {
+	public void start() throws Exception {
 		String url = config.getURL();
 		log.info("Connecting to database");
 		Properties props = new Properties();
@@ -69,7 +69,7 @@ public class DatabaseChannel extends AbstractChannel {
 		}
 		log.finest("Setting the connection's commit mode to auto");
 		connection.setAutoCommit(true);
-		super.open();
+		super.start();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -86,8 +86,8 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	protected void close() throws Exception {
-		super.close();
+	public void stop() throws Exception {
+		super.stop();
 		if (connection == null) {
 			return;
 		}
