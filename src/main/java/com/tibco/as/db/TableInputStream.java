@@ -3,15 +3,11 @@ package com.tibco.as.db;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.tibco.as.io.IInputStream;
-import com.tibco.as.log.LogFactory;
 
 public class TableInputStream extends TableStream implements IInputStream {
 
-	private Logger log = LogFactory.getLog(TableInputStream.class);
 	private DatabaseChannel channel;
 	private TableConfig config;
 	private ResultSet resultSet;
@@ -89,21 +85,10 @@ public class TableInputStream extends TableStream implements IInputStream {
 
 	@Override
 	public void close() throws SQLException {
-		if (resultSet == null) {
+		if (resultSet.isClosed()) {
 			return;
 		}
 		resultSet.close();
-		resultSet = null;
-	}
-
-	@Override
-	public boolean isClosed() {
-		try {
-			return resultSet == null || resultSet.isClosed();
-		} catch (SQLException e) {
-			log.log(Level.SEVERE, "Could not get state of result set", e);
-			return false;
-		}
 	}
 
 	@Override

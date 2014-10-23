@@ -1,7 +1,6 @@
 package com.tibco.as.db;
 
 import com.tibco.as.io.ChannelConfig;
-import com.tibco.as.io.DestinationConfig;
 
 public class DatabaseConfig extends ChannelConfig {
 
@@ -10,11 +9,6 @@ public class DatabaseConfig extends ChannelConfig {
 	private String url;
 	private String user;
 	private String password;
-	
-	@Override
-	protected DestinationConfig newDestinationConfig() {
-		return new TableConfig(this);
-	}
 
 	public String getDriver() {
 		return driver;

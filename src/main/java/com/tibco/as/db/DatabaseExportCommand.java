@@ -16,6 +16,11 @@ public class DatabaseExportCommand extends AbstractExportCommand {
 	private Integer insertBatchSize;
 
 	@Override
+	protected DestinationConfig newDestination() {
+		return new TableConfig();
+	}
+
+	@Override
 	protected void configure(DestinationConfig config) {
 		TableConfig table = (TableConfig) config;
 		if (table.getCatalog() == null) {

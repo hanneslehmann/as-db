@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.tibco.as.convert.Field;
-import com.tibco.as.io.ChannelConfig;
 import com.tibco.as.io.DestinationConfig;
 
 public class TableConfig extends DestinationConfig {
@@ -24,11 +23,6 @@ public class TableConfig extends DestinationConfig {
 	private TableType type;
 	private Integer fetchSize;
 	private Integer tableBatchSize;
-	private ChannelConfig channel;
-
-	public TableConfig(ChannelConfig channel) {
-		this.channel = channel;
-	}
 
 	@Override
 	public Collection<String> getKeys() {
@@ -154,7 +148,7 @@ public class TableConfig extends DestinationConfig {
 
 	@Override
 	public TableConfig clone() {
-		TableConfig export = new TableConfig(channel);
+		TableConfig export = new TableConfig();
 		copyTo(export);
 		return export;
 	}

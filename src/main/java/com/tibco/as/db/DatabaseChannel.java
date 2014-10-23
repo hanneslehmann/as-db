@@ -117,16 +117,17 @@ public class DatabaseChannel extends AbstractChannel {
 	}
 
 	@Override
-	protected void discover() throws Exception {
+	protected void configure() throws Exception {
+		Collection<DestinationConfig> destinations = new ArrayList<DestinationConfig>();
 		for (DestinationConfig destination : config.getDestinations()) {
 			if (destination.isImport()) {
-				config.removeDestinationConfig(destination);
-				for (TableConfig table : getTables((TableConfig) destination)) {
-					config.addDestinationConfig(table);
-				}
+				destinations.addAll(getTables((TableConfig) destination));
+			} else {
+				destinations.add(destination);
 			}
 		}
-		super.discover();
+		config.setDestinations(destinations);
+		super.configure();
 	}
 
 	private Collection<Field> getTableColumns(TableConfig config) {

@@ -21,7 +21,7 @@ public class TableDestination extends AbstractDestination {
 	}
 
 	@Override
-	protected IOutputStream createOutputStream() throws SQLException {
+	protected IOutputStream getExportOutputStream() throws SQLException {
 		if (config.getInsertSQL() == null) {
 			String tableName = config.getFullyQualifiedName();
 			String[] columnNames = config.getColumnNames();
@@ -41,7 +41,7 @@ public class TableDestination extends AbstractDestination {
 	}
 
 	@Override
-	protected TableInputStream createInputStream() throws Exception {
+	protected TableInputStream getImportInputStream() throws Exception {
 		if (config.getSelectSQL() == null) {
 			config.setSelectSQL(MessageFormat.format(SELECT,
 					getCommaSeparated(config.getColumnNames()),
@@ -68,6 +68,11 @@ public class TableDestination extends AbstractDestination {
 			result += elements[index];
 		}
 		return result;
+	}
+	
+	@Override
+	protected Class<?> getComponentType() {
+		return Object.class;
 	}
 
 }
