@@ -33,29 +33,29 @@ If the space name is not set (using the `-space` option on the command line or t
 
 If the space does not exist it is derived from the table schema: for each column in the table, a field def is created using the following type mapping:
 
-| SQL Type   | Field Type |
-|------------|------------|
-| CHAR       | STRING     |
-| CLOB       | STRING     |
-| VARCHAR    | STRING |
-| SQLXML     | STRING |
-| NUMERIC     | DOUBLE |
-| DECIMAL     | DOUBLE |
-| BIT     | BOOLEAN |
-| BOOLEAN     | BOOLEAN |
-| TINYINT     | INTEGER |
-| SMALLINT     | INTEGER |
-| INTEGER     | INTEGER |
-| BIGINT     | LONG |
-| REAL     | FLOAT |
-| FLOAT     | DOUBLE |
-| DOUBLE     | DOUBLE |
-| BINARY     | BLOB |
-| BLOB     | BLOB |
-| VARBINARY     | BLOB |
-| DATE     | DATETIME |
-| TIME     | DATETIME |
-| TIMESTAMP     | DATETIME |
+| SQL Type  | Field Type |
+|-----------|------------|
+| CHAR      | STRING     |
+| CLOB      | STRING     |
+| VARCHAR   | STRING     |
+| SQLXML    | STRING     |
+| NUMERIC   | DOUBLE     |
+| DECIMAL   | DOUBLE     |
+| BIT       | BOOLEAN    |
+| BOOLEAN   | BOOLEAN    |
+| TINYINT   | INTEGER    |
+| SMALLINT  | INTEGER    |
+| INTEGER   | INTEGER    |
+| BIGINT    | LONG       |
+| REAL      | FLOAT      |
+| FLOAT     | DOUBLE     |
+| DOUBLE    | DOUBLE     |
+| BINARY    | BLOB       |
+| BLOB      | BLOB       |
+| VARBINARY | BLOB       |
+| DATE      | DATETIME   |
+| TIME      | DATETIME   |
+| TIMESTAMP | DATETIME   |
 
 
 If the table is not configured with a SQL select statement (`selectSQL` attribute in `table` element in configuration XML) it is generated from the table meta-data. 
@@ -69,7 +69,7 @@ If the table name is not set (using the `-table` option on the command line or t
 
 If the table does not exist it is derived from the space definition: for each field definition in the space definition, a column is created using the following type mapping:
 
-| Field Typ  | SQL Type |
+| Field Type | SQL Type |
 |------------|----------|
 | BLOB       | BLOB     |
 | BOOLEAN    | NUMERIC  |
