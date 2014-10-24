@@ -12,14 +12,14 @@
 
   <xsd:complexType name="table">
     <xsd:sequence>
-      <xsd:element name="column" type="column" minOccurs="0"
-        maxOccurs="unbounded" />
       <xsd:element name="selectSQL" type="xsd:string"
         minOccurs="0" />
       <xsd:element name="countSQL" type="xsd:string"
         minOccurs="0" />
       <xsd:element name="insertSQL" type="xsd:string"
         minOccurs="0" />
+      <xsd:element name="column" type="column" minOccurs="0"
+        maxOccurs="unbounded" />
     </xsd:sequence>
     <xsd:attribute name="catalog" type="xsd:string" />
     <xsd:attribute name="schema" type="xsd:string" />
@@ -33,7 +33,7 @@
     <xsd:attribute name="keySequence" type="xsd:short" />
     <xsd:attribute name="type" type="dataType" />
     <xsd:attribute name="size" type="xsd:int" />
-    <xsd:attribute name="decimalDigits" type="xsd:int" />
+    <xsd:attribute name="decimals" type="xsd:int" />
     <xsd:attribute name="radix" type="xsd:int" />
     <xsd:attribute name="nullable" type="xsd:boolean" />
     <xsd:attribute name="field" type="xsd:string" />

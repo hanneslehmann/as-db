@@ -80,7 +80,7 @@ public class DatabaseApplication extends AbstractApplication {
 					columnConfig.setColumnNullable(column.isNullable());
 					columnConfig.setColumnSize(column.getSize());
 					columnConfig.setColumnType(column.getType());
-					columnConfig.setDecimalDigits(column.getDecimalDigits());
+					columnConfig.setDecimalDigits(column.getDecimals());
 					columnConfig.setKeySequence(column.getKeySequence());
 					columnConfig.setRadix(column.getRadix());
 				}

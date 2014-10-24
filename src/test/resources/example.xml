@@ -1,11 +1,4 @@
-# Configuration
-
-For simple cases (e.g. table-level settings) as-db can be run from the [command-line](usage.html).
-
-For more complex cases as-db can be configured using an XML file.
-
-~~~xml
-	<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <database xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://as.tibco.com/db.xsd">
   <table name="TABLE1" />
@@ -24,9 +17,3 @@ For more complex cases as-db can be configured using an XML file.
     <column name="COLUMN3" field="Field3" />
   </table>
 </database>
-~~~
-
-
-## Import
-
-## Export
