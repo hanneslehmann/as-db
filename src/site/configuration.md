@@ -84,4 +84,4 @@ If the table does not exist it is derived from the space definition: for each fi
 
 If the table is not configured with a SQL insert statement (`insertSQL` attribute in `table` element in configuration XML) it is generated from the table's columns.
 
-A prepared statement is then executed with that SQL, and each tuple in the space is inserted into the table. Use `-insert_batch-size` option to enable and set the size of the batch inserts. 
+A prepared statement is then executed with that SQL, and each tuple in the space is inserted into the table. Use `-insert_batch_size` option to enable and set the size of the batch inserts. 
