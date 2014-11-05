@@ -1,5 +1,7 @@
 package com.tibco.as.db;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -7,10 +9,8 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,13 +20,14 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.tibco.as.convert.Field;
-import com.tibco.as.io.AbstractChannel;
-import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.IDestination;
+import javax.xml.bind.JAXB;
+
+import com.tibco.as.io.Channel;
+import com.tibco.as.io.Destination;
+import com.tibco.as.io.Field;
 import com.tibco.as.log.LogFactory;
 
-public class DatabaseChannel extends AbstractChannel {
+public class DatabaseChannel extends Channel {
 
 	private static final String TABLE_NAME = "TABLE_NAME";
 	private static final String TABLE_CAT = "TABLE_CAT";
@@ -42,26 +43,74 @@ public class DatabaseChannel extends AbstractChannel {
 	private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
 
 	private Logger log = LogFactory.getLog(DatabaseChannel.class);
-	private DatabaseConfig config;
+	private String configPath;
+	private String driver;
+	private String jar;
+	private String url;
+	private String user;
+	private String password;
 	private Connection connection;
 
-	public DatabaseChannel(DatabaseConfig config) {
-		super(config);
-		this.config = config;
+	public String getConfigPath() {
+		return configPath;
+	}
+
+	public void setConfigPath(String configPath) {
+		this.configPath = configPath;
+	}
+
+	public String getDriver() {
+		return driver;
+	}
+
+	public void setDriver(String driver) {
+		this.driver = driver;
+	}
+
+	public String getJar() {
+		return jar;
+	}
+
+	public void setJar(String jar) {
+		this.jar = jar;
+	}
+
+	public String getURL() {
+		return url;
+	}
+
+	public void setURL(String url) {
+		this.url = url;
+	}
+
+	public String getUser() {
+		return user;
+	}
+
+	public void setUser(String user) {
+		this.user = user;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
 	}
 
 	@Override
-	public void start() throws Exception {
-		String url = config.getURL();
+	public void open() throws Exception {
+		loadConfig();
 		log.info("Connecting to database");
 		Properties props = new Properties();
-		if (config.getUser() != null) {
-			props.put("user", config.getUser());
+		if (user != null) {
+			props.put("user", user);
 		}
-		if (config.getPassword() != null) {
-			props.put("password", config.getPassword());
+		if (password != null) {
+			props.put("password", password);
 		}
-		if (config.getDriver() == null) {
+		if (driver == null) {
 			connection = DriverManager.getConnection(url, props);
 		} else {
 			Driver driver = getDriverClass().newInstance();
@@ -69,25 +118,64 @@ public class DatabaseChannel extends AbstractChannel {
 		}
 		log.finest("Setting the connection's commit mode to auto");
 		connection.setAutoCommit(true);
-		super.start();
+		super.open();
+	}
+
+	@Override
+	public TableDestination addDestination() {
+		return (TableDestination) super.addDestination();
+	}
+
+	private void loadConfig() throws FileNotFoundException {
+		if (configPath == null) {
+			return;
+		}
+		FileInputStream in = new FileInputStream(configPath);
+		Database database = JAXB.unmarshal(in, Database.class);
+		for (Table table : database.getTables()) {
+			TableDestination tableDestination = addDestination();
+			tableDestination.setCatalog(table.getCatalog());
+			tableDestination.setCountSQL(table.getCountSQL());
+			tableDestination.setInsertSQL(table.getInsertSQL());
+			tableDestination.setTable(table.getName());
+			tableDestination.setSchema(table.getSchema());
+			tableDestination.setSelectSQL(table.getSelectSQL());
+			tableDestination.setSpace(table.getSpace());
+			tableDestination.setType(table.getType());
+			for (Column column : table.getColumns()) {
+				ColumnConfig columnConfig = tableDestination.addField();
+				columnConfig.setFieldName(column.getField());
+				columnConfig.setColumnName(column.getName());
+				columnConfig.setColumnNullable(column.isNullable());
+				columnConfig.setColumnSize(column.getSize());
+				columnConfig.setColumnType(column.getType());
+				columnConfig.setDecimalDigits(column.getDecimals());
+				columnConfig.setKeySequence(column.getKeySequence());
+				columnConfig.setRadix(column.getRadix());
+			}
+		}
+	}
+
+	public Connection getConnection() {
+		return connection;
 	}
 
 	@SuppressWarnings("unchecked")
 	private Class<Driver> getDriverClass() throws MalformedURLException,
 			ClassNotFoundException {
-		if (config.getJar() == null) {
-			return (Class<Driver>) Class.forName(config.getDriver());
+		if (jar == null) {
+			return (Class<Driver>) Class.forName(driver);
 		}
-		URL[] urls = { new URL("file://" + config.getJar()) };
+		URL[] urls = { new URL("file://" + jar) };
 		URLClassLoader classLoader = URLClassLoader.newInstance(urls);
 		log.log(Level.FINE, "Loading driver ''{0}'' from {1}", new Object[] {
-				config.getDriver(), Arrays.toString(urls) });
-		return (Class<Driver>) classLoader.loadClass(config.getDriver());
+				driver, Arrays.toString(urls) });
+		return (Class<Driver>) classLoader.loadClass(driver);
 	}
 
 	@Override
-	public void stop() throws Exception {
-		super.stop();
+	public void close() throws Exception {
+		super.close();
 		if (connection == null) {
 			return;
 		}
@@ -100,44 +188,33 @@ public class DatabaseChannel extends AbstractChannel {
 		return connection.getMetaData();
 	}
 
-	public ResultSet executeQuery(String sql) throws SQLException {
-		Statement statement = connection.createStatement();
-		log.log(Level.FINE, "Executing query: {0}", sql);
-		try {
-			return statement.executeQuery(sql);
-		} catch (SQLException e) {
-			statement.close();
-			throw e;
-		}
+	@Override
+	protected TableDestination newDestination() {
+		return new TableDestination(this);
 	}
 
 	@Override
-	protected IDestination createDestination(DestinationConfig config) {
-		return new TableDestination(this, (TableConfig) config);
-	}
-
-	@Override
-	protected void configure() throws Exception {
-		Collection<DestinationConfig> destinations = new ArrayList<DestinationConfig>();
-		for (DestinationConfig destination : config.getDestinations()) {
-			if (destination.isImport()) {
-				destinations.addAll(getTables((TableConfig) destination));
-			} else {
-				destinations.add(destination);
-			}
+	public Collection<Destination> getImportDestinations() throws Exception {
+		Collection<Destination> destinations = super.getImportDestinations();
+		if (destinations.isEmpty()) {
+			destinations.add(getDefaultDestination());
 		}
-		config.setDestinations(destinations);
-		super.configure();
+		Collection<Destination> result = new ArrayList<Destination>();
+		for (Destination destination : destinations) {
+			result.addAll(getTables((TableDestination) destination));
+		}
+		configure(result);
+		return result;
 	}
 
-	private Collection<Field> getTableColumns(TableConfig config) {
+	private Collection<Field> getTableColumns(TableDestination config) {
 		if (config.getFields().isEmpty()) {
 			config.addField();
 		}
 		return config.getFields();
 	}
 
-	public Collection<TableConfig> getTables(TableConfig table)
+	public Collection<TableDestination> getTables(TableDestination table)
 			throws SQLException {
 		String catalog = table.getCatalog();
 		String schema = table.getSchema();
@@ -148,10 +225,10 @@ public class DatabaseChannel extends AbstractChannel {
 				new Object[] { catalog, schema, name, Arrays.toString(types) });
 		ResultSet resultSet = getMetaData().getTables(catalog, schema, name,
 				types);
-		Collection<TableConfig> tables = new ArrayList<TableConfig>();
+		Collection<TableDestination> tables = new ArrayList<TableDestination>();
 		try {
 			while (resultSet.next()) {
-				TableConfig found = table.clone();
+				TableDestination found = table.clone();
 				found.setCatalog(resultSet.getString(TABLE_CAT));
 				found.setTable(resultSet.getString(TABLE_NAME));
 				found.setSchema(resultSet.getString(TABLE_SCHEM));
@@ -161,13 +238,13 @@ public class DatabaseChannel extends AbstractChannel {
 		} finally {
 			resultSet.close();
 		}
-		for (TableConfig config : tables) {
+		for (TableDestination destination : tables) {
 			Collection<Field> columns = new ArrayList<Field>();
-			for (Field field : getTableColumns(config)) {
+			for (Field field : getTableColumns(destination)) {
 				ColumnConfig column = (ColumnConfig) field;
 				ResultSet columnRS = getMetaData().getColumns(
-						config.getCatalog(), config.getSchema(),
-						config.getTable(), column.getColumnName());
+						destination.getCatalog(), destination.getSchema(),
+						destination.getTable(), column.getColumnName());
 				Map<Integer, ColumnConfig> columnMap = new TreeMap<Integer, ColumnConfig>();
 				try {
 					while (columnRS.next()) {
@@ -189,13 +266,14 @@ public class DatabaseChannel extends AbstractChannel {
 				}
 				columns.addAll(columnMap.values());
 			}
-			config.setFields(columns);
-			ResultSet keyRS = getMetaData().getPrimaryKeys(config.getCatalog(),
-					config.getSchema(), config.getTable());
+			destination.setFields(columns);
+			ResultSet keyRS = getMetaData().getPrimaryKeys(
+					destination.getCatalog(), destination.getSchema(),
+					destination.getTable());
 			try {
 				while (keyRS.next()) {
 					String columnName = keyRS.getString(COLUMN_NAME);
-					ColumnConfig column = config.getColumn(columnName);
+					ColumnConfig column = destination.getColumn(columnName);
 					column.setKeySequence(keyRS.getShort(KEY_SEQ));
 				}
 			} finally {
@@ -205,17 +283,4 @@ public class DatabaseChannel extends AbstractChannel {
 		return tables;
 	}
 
-	public void execute(String sql) throws SQLException {
-		Statement statement = connection.createStatement();
-		log.log(Level.FINE, "Executing statement: {0}", sql);
-		try {
-			statement.execute(sql);
-		} finally {
-			statement.close();
-		}
-	}
-
-	public PreparedStatement prepareStatement(String sql) throws SQLException {
-		return connection.prepareStatement(sql);
-	}
 }

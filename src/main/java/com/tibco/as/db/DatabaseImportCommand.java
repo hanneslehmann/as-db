@@ -1,16 +1,17 @@
 package com.tibco.as.db;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.cli.AbstractImportCommand;
+import com.tibco.as.io.Channel;
+import com.tibco.as.io.ChannelImport;
+import com.tibco.as.io.Destination;
+import com.tibco.as.io.cli.ImportCommand;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
-public class DatabaseImportCommand extends AbstractImportCommand {
+public class DatabaseImportCommand extends ImportCommand {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -30,44 +31,39 @@ public class DatabaseImportCommand extends AbstractImportCommand {
 	private List<String> tableNames = new ArrayList<String>();
 
 	@Override
-	protected void configure(DestinationConfig config) {
-		TableConfig table = (TableConfig) config;
-		if (table.getCatalog() == null) {
+	protected void configure(Destination config) {
+		TableDestination table = (TableDestination) config;
+		if (catalog != null) {
 			table.setCatalog(catalog);
 		}
-		if (table.getSchema() == null) {
+		if (schema != null) {
 			table.setSchema(schema);
 		}
-		if (table.getFetchSize() == null) {
+		if (fetchSize != null) {
 			table.setFetchSize(fetchSize);
 		}
-		if (table.getSelectSQL() == null) {
+		if (selectSQL != null) {
 			table.setSelectSQL(selectSQL);
 		}
-		if (table.getCountSQL() == null) {
+		if (countSQL != null) {
 			table.setCountSQL(countSQL);
 		}
-		if (table.getInsertSQL() == null) {
+		if (insertSQL != null) {
 			table.setInsertSQL(insertSQL);
 		}
-		if (table.getType() == null) {
+		if (tableType != null) {
 			table.setType(tableType);
 		}
 		super.configure(config);
 	}
 
 	@Override
-	protected void populate(Collection<DestinationConfig> destinations) {
+	public ChannelImport getTransfer(Channel channel) throws Exception {
+		DatabaseChannel databaseChannel = (DatabaseChannel) channel;
 		for (String tableName : tableNames) {
-			TableConfig table = newDestination();
-			table.setTable(tableName);
-			destinations.add(table);
+			databaseChannel.addDestination().setTable(tableName);
 		}
-	}
-
-	@Override
-	protected TableConfig newDestination() {
-		return new TableConfig();
+		return super.getTransfer(channel);
 	}
 
 }

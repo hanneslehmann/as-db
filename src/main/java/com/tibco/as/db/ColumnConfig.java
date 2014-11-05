@@ -6,7 +6,7 @@ import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 
-import com.tibco.as.convert.Field;
+import com.tibco.as.io.Field;
 import com.tibco.as.space.FieldDef.FieldType;
 
 public class ColumnConfig extends Field {

@@ -9,9 +9,8 @@ public class BatchTableOutputStream extends TableOutputStream {
 	private int batchSize;
 	private int count;
 
-	public BatchTableOutputStream(DatabaseChannel channel, TableConfig config,
-			int batchSize) {
-		super(channel, config);
+	public BatchTableOutputStream(TableDestination destination, int batchSize) {
+		super(destination);
 		this.batchSize = batchSize;
 	}
 

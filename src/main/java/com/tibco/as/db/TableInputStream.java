@@ -6,26 +6,23 @@ import java.sql.SQLException;
 
 import com.tibco.as.io.IInputStream;
 
-public class TableInputStream extends TableStream implements IInputStream {
+public class TableInputStream implements IInputStream {
 
-	private DatabaseChannel channel;
-	private TableConfig config;
+	private TableDestination destination;
 	private ResultSet resultSet;
 	private IPreparedStatementAccessor[] accessors;
 	private Long position;
 	private Long count;
 
-	public TableInputStream(DatabaseChannel channel, TableConfig config) {
-		super(config);
-		this.channel = channel;
-		this.config = config;
+	public TableInputStream(TableDestination destination) {
+		this.destination = destination;
 	}
 
 	@Override
 	public void open() throws SQLException {
-		resultSet = channel.executeQuery(config.getSelectSQL());
-		if (config.getFetchSize() != null) {
-			resultSet.setFetchSize(config.getFetchSize());
+		resultSet = destination.executeQuery(destination.getSelectSQL());
+		if (destination.getFetchSize() != null) {
+			resultSet.setFetchSize(destination.getFetchSize());
 		}
 		ResultSetMetaData metaData = resultSet.getMetaData();
 		for (int index = 1; index <= metaData.getColumnCount(); index++) {
@@ -34,22 +31,23 @@ public class TableInputStream extends TableStream implements IInputStream {
 			int scale = metaData.getScale(index);
 			boolean nullable = metaData.isNullable(index) == ResultSetMetaData.columnNullable;
 			int dataType = metaData.getColumnType(index);
-			ColumnConfig column = config.getColumn(columnName);
+			ColumnConfig column = destination.getColumn(columnName);
 			column.setColumnSize(precision);
 			column.setDecimalDigits(scale);
 			column.setColumnNullable(nullable);
 			column.setColumnType(JDBCType.valueOf(dataType));
 		}
-		accessors = getAccessors();
+		accessors = destination.getAccessors();
 		count = getCount();
 		position = 0L;
 	}
 
 	private Long getCount() throws SQLException {
-		if (config.getCountSQL() == null) {
+		if (destination.getCountSQL() == null) {
 			return null;
 		}
-		ResultSet resultSet = channel.executeQuery(config.getCountSQL());
+		String sql = destination.getCountSQL();
+		ResultSet resultSet = destination.executeQuery(sql);
 		try {
 			if (resultSet.next()) {
 				return resultSet.getLong(1);

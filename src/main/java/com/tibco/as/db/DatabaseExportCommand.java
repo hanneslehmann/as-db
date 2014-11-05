@@ -2,11 +2,11 @@ package com.tibco.as.db;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.tibco.as.io.DestinationConfig;
-import com.tibco.as.io.cli.AbstractExportCommand;
+import com.tibco.as.io.Destination;
+import com.tibco.as.io.cli.ExportCommand;
 
 @Parameters(commandNames = "export", commandDescription = "Export tables")
-public class DatabaseExportCommand extends AbstractExportCommand {
+public class DatabaseExportCommand extends ExportCommand {
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -18,13 +18,8 @@ public class DatabaseExportCommand extends AbstractExportCommand {
 	private Integer insertBatchSize;
 
 	@Override
-	protected DestinationConfig newDestination() {
-		return new TableConfig();
-	}
-
-	@Override
-	protected void configure(DestinationConfig config) {
-		TableConfig table = (TableConfig) config;
+	protected void configure(Destination config) {
+		TableDestination table = (TableDestination) config;
 		if (table.getCatalog() == null) {
 			table.setCatalog(catalog);
 		}
