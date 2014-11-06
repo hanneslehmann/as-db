@@ -143,7 +143,7 @@ public class DatabaseChannel extends Channel {
 			tableDestination.setSpace(table.getSpace());
 			tableDestination.setType(table.getType());
 			for (Column column : table.getColumns()) {
-				ColumnConfig columnConfig = tableDestination.addField();
+				ColumnConfig columnConfig = tableDestination.newField();
 				columnConfig.setFieldName(column.getField());
 				columnConfig.setColumnName(column.getName());
 				columnConfig.setColumnNullable(column.isNullable());
@@ -152,6 +152,7 @@ public class DatabaseChannel extends Channel {
 				columnConfig.setDecimalDigits(column.getDecimals());
 				columnConfig.setKeySequence(column.getKeySequence());
 				columnConfig.setRadix(column.getRadix());
+				tableDestination.getFields().add(columnConfig);
 			}
 		}
 	}
@@ -194,24 +195,11 @@ public class DatabaseChannel extends Channel {
 	}
 
 	@Override
-	public Collection<Destination> getImportDestinations() throws Exception {
-		Collection<Destination> destinations = super.getImportDestinations();
-		if (destinations.isEmpty()) {
-			destinations.add(getDefaultDestination());
-		}
-		Collection<Destination> result = new ArrayList<Destination>();
-		for (Destination destination : destinations) {
-			result.addAll(getTables((TableDestination) destination));
-		}
-		configure(result);
-		return result;
-	}
-
-	private Collection<Field> getTableColumns(TableDestination config) {
-		if (config.getFields().isEmpty()) {
-			config.addField();
-		}
-		return config.getFields();
+	protected Collection<Destination> getImportDestinations(
+			Destination destination) throws SQLException {
+		Collection<Destination> destinations = new ArrayList<Destination>();
+		destinations.addAll(getTables((TableDestination) destination));
+		return destinations;
 	}
 
 	public Collection<TableDestination> getTables(TableDestination table)
@@ -240,7 +228,11 @@ public class DatabaseChannel extends Channel {
 		}
 		for (TableDestination destination : tables) {
 			Collection<Field> columns = new ArrayList<Field>();
-			for (Field field : getTableColumns(destination)) {
+			Collection<Field> fields = destination.getFields();
+			if (fields.isEmpty()) {
+				fields.add(destination.newField());
+			}
+			for (Field field : fields) {
 				ColumnConfig column = (ColumnConfig) field;
 				ResultSet columnRS = getMetaData().getColumns(
 						destination.getCatalog(), destination.getSchema(),
@@ -274,6 +266,11 @@ public class DatabaseChannel extends Channel {
 				while (keyRS.next()) {
 					String columnName = keyRS.getString(COLUMN_NAME);
 					ColumnConfig column = destination.getColumn(columnName);
+					if (column == null) {
+						column = destination.newField();
+						column.setColumnName(columnName);
+						destination.getFields().add(column);
+					}
 					column.setKeySequence(keyRS.getShort(KEY_SEQ));
 				}
 			} finally {

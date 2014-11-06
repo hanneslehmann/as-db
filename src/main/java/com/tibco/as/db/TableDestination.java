@@ -43,11 +43,6 @@ public class TableDestination extends Destination {
 	}
 
 	@Override
-	public ColumnConfig addField() {
-		return (ColumnConfig) super.addField();
-	}
-
-	@Override
 	public TableDestination clone() {
 		TableDestination destination = new TableDestination(channel);
 		copyTo(destination);
@@ -103,15 +98,13 @@ public class TableDestination extends Destination {
 		return keys;
 	}
 
-	public ColumnConfig getColumn(String columnName) {
+	public ColumnConfig getColumn(String name) {
 		for (ColumnConfig column : getColumns()) {
-			if (columnName.equals(column.getColumnName())) {
+			if (name.equals(column.getColumnName())) {
 				return column;
 			}
 		}
-		ColumnConfig column = (ColumnConfig) addField();
-		column.setColumnName(columnName);
-		return column;
+		return null;
 	}
 
 	public Collection<String> getPrimaryKeys() {
@@ -126,7 +119,9 @@ public class TableDestination extends Destination {
 			Collection<String> primaryKeys = new ArrayList<String>();
 			for (String key : super.getKeys()) {
 				ColumnConfig column = (ColumnConfig) getField(key);
-				primaryKeys.add(column.getColumnName());
+				if (column != null) {
+					primaryKeys.add(column.getColumnName());
+				}
 			}
 			return primaryKeys;
 		}
@@ -243,7 +238,7 @@ public class TableDestination extends Destination {
 	}
 
 	@Override
-	protected ColumnConfig newField() {
+	public ColumnConfig newField() {
 		return new ColumnConfig();
 	}
 
