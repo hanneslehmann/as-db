@@ -24,7 +24,6 @@ import javax.xml.bind.JAXB;
 
 import com.tibco.as.io.Channel;
 import com.tibco.as.io.Destination;
-import com.tibco.as.io.Field;
 import com.tibco.as.log.LogFactory;
 
 public class DatabaseChannel extends Channel {
@@ -50,6 +49,10 @@ public class DatabaseChannel extends Channel {
 	private String user;
 	private String password;
 	private Connection connection;
+
+	public DatabaseChannel(String metaspaceName) {
+		super(metaspaceName);
+	}
 
 	public String getConfigPath() {
 		return configPath;
@@ -121,11 +124,6 @@ public class DatabaseChannel extends Channel {
 		super.open();
 	}
 
-	@Override
-	public TableDestination addDestination() {
-		return (TableDestination) super.addDestination();
-	}
-
 	private void loadConfig() throws FileNotFoundException {
 		if (configPath == null) {
 			return;
@@ -133,17 +131,17 @@ public class DatabaseChannel extends Channel {
 		FileInputStream in = new FileInputStream(configPath);
 		Database database = JAXB.unmarshal(in, Database.class);
 		for (Table table : database.getTables()) {
-			TableDestination tableDestination = addDestination();
-			tableDestination.setCatalog(table.getCatalog());
-			tableDestination.setCountSQL(table.getCountSQL());
-			tableDestination.setInsertSQL(table.getInsertSQL());
-			tableDestination.setTable(table.getName());
-			tableDestination.setSchema(table.getSchema());
-			tableDestination.setSelectSQL(table.getSelectSQL());
-			tableDestination.setSpace(table.getSpace());
-			tableDestination.setType(table.getType());
+			TableDestination destination = newDestination();
+			destination.setCatalog(table.getCatalog());
+			destination.setCountSQL(table.getCountSQL());
+			destination.setInsertSQL(table.getInsertSQL());
+			destination.setTable(table.getName());
+			destination.setSchema(table.getSchema());
+			destination.setSelectSQL(table.getSelectSQL());
+			destination.setSpaceName(table.getSpace());
+			destination.setType(table.getType());
 			for (Column column : table.getColumns()) {
-				ColumnConfig columnConfig = tableDestination.newField();
+				ColumnConfig columnConfig = new ColumnConfig();
 				columnConfig.setFieldName(column.getField());
 				columnConfig.setColumnName(column.getName());
 				columnConfig.setColumnNullable(column.isNullable());
@@ -152,8 +150,9 @@ public class DatabaseChannel extends Channel {
 				columnConfig.setDecimalDigits(column.getDecimals());
 				columnConfig.setKeySequence(column.getKeySequence());
 				columnConfig.setRadix(column.getRadix());
-				tableDestination.getFields().add(columnConfig);
+				destination.getColumns().add(columnConfig);
 			}
+			addDestination(destination);
 		}
 	}
 
@@ -190,7 +189,7 @@ public class DatabaseChannel extends Channel {
 	}
 
 	@Override
-	protected TableDestination newDestination() {
+	public TableDestination newDestination() {
 		return new TableDestination(this);
 	}
 
@@ -227,13 +226,8 @@ public class DatabaseChannel extends Channel {
 			resultSet.close();
 		}
 		for (TableDestination destination : tables) {
-			Collection<Field> columns = new ArrayList<Field>();
-			Collection<Field> fields = destination.getFields();
-			if (fields.isEmpty()) {
-				fields.add(destination.newField());
-			}
-			for (Field field : fields) {
-				ColumnConfig column = (ColumnConfig) field;
+			Collection<ColumnConfig> columns = new ArrayList<ColumnConfig>();
+			for (ColumnConfig column : getColumns(destination)) {
 				ResultSet columnRS = getMetaData().getColumns(
 						destination.getCatalog(), destination.getSchema(),
 						destination.getTable(), column.getColumnName());
@@ -258,7 +252,7 @@ public class DatabaseChannel extends Channel {
 				}
 				columns.addAll(columnMap.values());
 			}
-			destination.setFields(columns);
+			destination.setColumns(columns);
 			ResultSet keyRS = getMetaData().getPrimaryKeys(
 					destination.getCatalog(), destination.getSchema(),
 					destination.getTable());
@@ -267,9 +261,7 @@ public class DatabaseChannel extends Channel {
 					String columnName = keyRS.getString(COLUMN_NAME);
 					ColumnConfig column = destination.getColumn(columnName);
 					if (column == null) {
-						column = destination.newField();
-						column.setColumnName(columnName);
-						destination.getFields().add(column);
+						continue;
 					}
 					column.setKeySequence(keyRS.getShort(KEY_SEQ));
 				}
@@ -278,6 +270,22 @@ public class DatabaseChannel extends Channel {
 			}
 		}
 		return tables;
+	}
+
+	private Collection<ColumnConfig> getColumns(TableDestination destination) {
+		if (destination.getColumns().isEmpty()) {
+			return Arrays.asList(new ColumnConfig());
+		}
+		return destination.getColumns();
+	}
+
+	public void setTableNames(Collection<String> tableNames) {
+		for (String tableName : tableNames) {
+			TableDestination destination = newDestination();
+			destination.setTable(tableName);
+			addDestination(destination);
+		}
+
 	}
 
 }

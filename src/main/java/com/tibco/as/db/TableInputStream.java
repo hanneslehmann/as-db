@@ -19,7 +19,7 @@ public class TableInputStream implements IInputStream {
 	}
 
 	@Override
-	public void open() throws SQLException {
+	public synchronized void open() throws SQLException {
 		resultSet = destination.executeQuery(destination.getSelectSQL());
 		if (destination.getFetchSize() != null) {
 			resultSet.setFetchSize(destination.getFetchSize());
@@ -32,6 +32,11 @@ public class TableInputStream implements IInputStream {
 			boolean nullable = metaData.isNullable(index) == ResultSetMetaData.columnNullable;
 			int dataType = metaData.getColumnType(index);
 			ColumnConfig column = destination.getColumn(columnName);
+			if (column == null) {
+				column = new ColumnConfig();
+				column.setColumnName(columnName);
+				destination.getColumns().add(column);
+			}
 			column.setColumnSize(precision);
 			column.setDecimalDigits(scale);
 			column.setColumnNullable(nullable);
@@ -82,7 +87,7 @@ public class TableInputStream implements IInputStream {
 	}
 
 	@Override
-	public void close() throws SQLException {
+	public synchronized void close() throws SQLException {
 		if (resultSet.isClosed()) {
 			return;
 		}

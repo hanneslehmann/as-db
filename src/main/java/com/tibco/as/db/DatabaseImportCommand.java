@@ -5,9 +5,8 @@ import java.util.List;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import com.tibco.as.io.Channel;
-import com.tibco.as.io.ChannelImport;
-import com.tibco.as.io.Destination;
+import com.tibco.as.io.IChannel;
+import com.tibco.as.io.IDestination;
 import com.tibco.as.io.cli.ImportCommand;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
@@ -31,39 +30,35 @@ public class DatabaseImportCommand extends ImportCommand {
 	private List<String> tableNames = new ArrayList<String>();
 
 	@Override
-	protected void configure(Destination config) {
-		TableDestination table = (TableDestination) config;
+	protected void configure(IDestination destination) {
+		TableDestination tableDestination = (TableDestination) destination;
 		if (catalog != null) {
-			table.setCatalog(catalog);
+			tableDestination.setCatalog(catalog);
 		}
 		if (schema != null) {
-			table.setSchema(schema);
+			tableDestination.setSchema(schema);
 		}
 		if (fetchSize != null) {
-			table.setFetchSize(fetchSize);
+			tableDestination.setFetchSize(fetchSize);
 		}
 		if (selectSQL != null) {
-			table.setSelectSQL(selectSQL);
+			tableDestination.setSelectSQL(selectSQL);
 		}
 		if (countSQL != null) {
-			table.setCountSQL(countSQL);
+			tableDestination.setCountSQL(countSQL);
 		}
 		if (insertSQL != null) {
-			table.setInsertSQL(insertSQL);
+			tableDestination.setInsertSQL(insertSQL);
 		}
 		if (tableType != null) {
-			table.setType(tableType);
+			tableDestination.setType(tableType);
 		}
-		super.configure(config);
+		super.configure(tableDestination);
 	}
 
 	@Override
-	public ChannelImport getTransfer(Channel channel) throws Exception {
-		DatabaseChannel databaseChannel = (DatabaseChannel) channel;
-		for (String tableName : tableNames) {
-			databaseChannel.addDestination().setTable(tableName);
-		}
-		return super.getTransfer(channel);
+	protected void addDestinations(IChannel channel) {
+		((DatabaseChannel) channel).setTableNames(tableNames);
 	}
 
 }

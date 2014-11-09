@@ -2,7 +2,7 @@ package com.tibco.as.db;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import com.tibco.as.io.Channel;
+import com.tibco.as.io.IChannel;
 import com.tibco.as.io.cli.AbstractApplication;
 
 public class DatabaseApplication extends AbstractApplication {
@@ -36,8 +36,8 @@ public class DatabaseApplication extends AbstractApplication {
 	}
 
 	@Override
-	protected Channel getChannel() {
-		DatabaseChannel channel = new DatabaseChannel();
+	protected IChannel getChannel(String metaspaceName) {
+		DatabaseChannel channel = new DatabaseChannel(metaspaceName);
 		channel.setConfigPath(config);
 		channel.setDriver(driver);
 		channel.setJar(jar);

@@ -1,29 +1,39 @@
 package com.tibco.as.db;
 
+import java.math.BigDecimal;
+import java.sql.Clob;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.tibco.as.io.Destination;
-import com.tibco.as.io.Field;
 import com.tibco.as.io.IInputStream;
 import com.tibco.as.log.LogFactory;
+import com.tibco.as.space.FieldDef;
+import com.tibco.as.space.FieldDef.FieldType;
+import com.tibco.as.space.SpaceDef;
 
 public class TableDestination extends Destination {
 
 	private static final String SELECT = "SELECT {0} FROM {1}";
-	private final static int DEFAULT_INSERT_BATCH_SIZE = 1000;
 	private final static char QUOTE = '\"';
+	private static final int DEFAULT_BLOB_SIZE = 255;
+	private static final int DEFAULT_CLOB_SIZE = 255;
+	private static final int DEFAULT_BOOLEAN_SIZE = 1;
+	private static final int DEFAULT_CHAR_SIZE = 1;
+	private static final int DEFAULT_LONG_SIZE = 19;
 
 	private Logger log = LogFactory.getLog(TableDestination.class);
 	private DatabaseChannel channel;
@@ -35,7 +45,7 @@ public class TableDestination extends Destination {
 	private String table;
 	private TableType type;
 	private Integer fetchSize;
-	private Integer tableBatchSize;
+	private Collection<ColumnConfig> columns = new ArrayList<ColumnConfig>();
 
 	public TableDestination(DatabaseChannel channel) {
 		super(channel);
@@ -61,9 +71,6 @@ public class TableDestination extends Destination {
 		if (destination.fetchSize == null) {
 			destination.fetchSize = fetchSize;
 		}
-		if (destination.tableBatchSize == null) {
-			destination.tableBatchSize = tableBatchSize;
-		}
 		if (destination.insertSQL == null) {
 			destination.insertSQL = insertSQL;
 		}
@@ -79,6 +86,9 @@ public class TableDestination extends Destination {
 		if (destination.type == null) {
 			destination.type = type;
 		}
+		for (ColumnConfig column : columns) {
+			destination.columns.add(column.clone());
+		}
 		super.copyTo(destination);
 	}
 
@@ -92,7 +102,11 @@ public class TableDestination extends Destination {
 		Collection<String> keys = super.getKeys();
 		if (keys.isEmpty()) {
 			for (String primaryKey : getPrimaryKeys()) {
-				keys.add(getColumn(primaryKey).getFieldName());
+				ColumnConfig column = getColumn(primaryKey);
+				if (column == null) {
+					continue;
+				}
+				keys.add(column.getFieldName());
 			}
 		}
 		return keys;
@@ -118,7 +132,7 @@ public class TableDestination extends Destination {
 		if (keyMap.isEmpty()) {
 			Collection<String> primaryKeys = new ArrayList<String>();
 			for (String key : super.getKeys()) {
-				ColumnConfig column = (ColumnConfig) getField(key);
+				ColumnConfig column = getColumnByFieldName(key);
 				if (column != null) {
 					primaryKeys.add(column.getColumnName());
 				}
@@ -126,6 +140,15 @@ public class TableDestination extends Destination {
 			return primaryKeys;
 		}
 		return keyMap.values();
+	}
+
+	private ColumnConfig getColumnByFieldName(String fieldName) {
+		for (ColumnConfig column : columns) {
+			if (column.getFieldName().equals(fieldName)) {
+				return column;
+			}
+		}
+		return null;
 	}
 
 	public String getSelectSQL() {
@@ -189,7 +212,7 @@ public class TableDestination extends Destination {
 
 	public String getTable() {
 		if (table == null) {
-			return getSpace();
+			return getSpaceName();
 		}
 		return table;
 	}
@@ -217,29 +240,13 @@ public class TableDestination extends Destination {
 		this.fetchSize = fetchSize;
 	}
 
-	public int getTableBatchSize() {
-		if (tableBatchSize == null) {
-			return DEFAULT_INSERT_BATCH_SIZE;
-		}
-		return tableBatchSize;
-	}
-
-	public void setTableBatchSize(Integer batchSize) {
-		this.tableBatchSize = batchSize;
-	}
-
 	@Override
-	public String getSpace() {
-		String space = super.getSpace();
-		if (space == null) {
+	public String getSpaceName() {
+		String spaceName = super.getSpaceName();
+		if (spaceName == null) {
 			return table;
 		}
-		return space;
-	}
-
-	@Override
-	public ColumnConfig newField() {
-		return new ColumnConfig();
+		return spaceName;
 	}
 
 	public String getFullyQualifiedName() {
@@ -269,26 +276,17 @@ public class TableDestination extends Destination {
 		return columnNames.toArray(new String[columnNames.size()]);
 	}
 
-	public List<ColumnConfig> getColumns() {
-		List<ColumnConfig> columns = new ArrayList<ColumnConfig>();
-		for (Field field : getFields()) {
-			columns.add((ColumnConfig) field);
-		}
-		return columns;
-	}
-
 	@Override
 	public TableOutputStream getOutputStream() {
-		int batchSize = getTableBatchSize();
-		if (batchSize > 1) {
-			return new BatchTableOutputStream(this, batchSize);
+		Integer batchSize = getExportConfig().getBatchSize();
+		if (batchSize == null || batchSize == 1) {
+			return new TableOutputStream(this);
 		}
-		return new TableOutputStream(this);
-
+		return new BatchTableOutputStream(this, batchSize);
 	}
 
 	@Override
-	public IInputStream getInputStream() throws Exception {
+	public IInputStream getInputStream() {
 		return new TableInputStream(this);
 	}
 
@@ -355,6 +353,96 @@ public class TableDestination extends Destination {
 		return query;
 	}
 
+	public Collection<ColumnConfig> getColumns() {
+		return columns;
+	}
+
+	@Override
+	public void setSpaceDef(SpaceDef spaceDef) {
+		super.setSpaceDef(spaceDef);
+		for (FieldDef fieldDef : getFieldDefs()) {
+			ColumnConfig column = getColumnByFieldName(fieldDef.getName());
+			if (column == null) {
+				column = new ColumnConfig();
+				columns.add(column);
+			}
+			column.setFieldName(fieldDef.getName());
+			if (column.getColumnType() == null) {
+				column.setColumnType(getColumnType(fieldDef.getType()));
+			}
+			if (column.getColumnNullable() == null) {
+				column.setColumnNullable(fieldDef.isNullable());
+			}
+			if (column.getColumnSize() == null) {
+				column.setColumnSize(getColumnSize(fieldDef.getType()));
+			}
+		}
+	}
+
+	private Integer getColumnSize(FieldType fieldType) {
+		switch (fieldType) {
+		case BOOLEAN:
+			return DEFAULT_BOOLEAN_SIZE;
+		case CHAR:
+			return DEFAULT_CHAR_SIZE;
+		case LONG:
+			return DEFAULT_LONG_SIZE;
+		case BLOB:
+			return DEFAULT_BLOB_SIZE;
+		case STRING:
+			return DEFAULT_CLOB_SIZE;
+		default:
+			return null;
+		}
+	}
+
+	private Integer getColumnSize(JDBCType jdbcType) {
+		switch (jdbcType) {
+		case BINARY:
+		case BLOB:
+		case LONGVARBINARY:
+		case VARBINARY:
+			return DEFAULT_BLOB_SIZE;
+		case CHAR:
+		case CLOB:
+		case LONGNVARCHAR:
+		case LONGVARCHAR:
+		case NCHAR:
+		case NCLOB:
+		case NVARCHAR:
+		case VARCHAR:
+			return DEFAULT_CLOB_SIZE;
+		default:
+			return null;
+		}
+	}
+
+	private JDBCType getColumnType(FieldType fieldType) {
+		switch (fieldType) {
+		case BLOB:
+			return JDBCType.BLOB;
+		case BOOLEAN:
+			return JDBCType.NUMERIC;
+		case CHAR:
+			return JDBCType.CHAR;
+		case DATETIME:
+			return JDBCType.TIMESTAMP;
+		case DOUBLE:
+			return JDBCType.DOUBLE;
+		case FLOAT:
+			return JDBCType.REAL;
+		case INTEGER:
+			return JDBCType.INTEGER;
+		case LONG:
+			return JDBCType.NUMERIC;
+		case SHORT:
+			return JDBCType.SMALLINT;
+		case STRING:
+			return JDBCType.VARCHAR;
+		}
+		return null;
+	}
+
 	public void execute(String sql) throws SQLException {
 		Statement statement = channel.getConnection().createStatement();
 		log.log(Level.FINE, "Executing statement: {0}", sql);
@@ -371,10 +459,10 @@ public class TableDestination extends Destination {
 
 	public IPreparedStatementAccessor[] getAccessors() {
 		Collection<IPreparedStatementAccessor> result = new ArrayList<IPreparedStatementAccessor>();
-		List<ColumnConfig> columns = getColumns();
-		for (int index = 0; index < columns.size(); index++) {
-			ColumnConfig column = columns.get(index);
-			result.add(getAccessor(index + 1, column.getColumnType()));
+		int index = 1;
+		for (ColumnConfig column : columns) {
+			result.add(getAccessor(index, column.getColumnType()));
+			index++;
 		}
 		return result.toArray(new IPreparedStatementAccessor[result.size()]);
 	}
@@ -386,6 +474,122 @@ public class TableDestination extends Destination {
 		default:
 			return new DefaultAccessor(index, type.getType());
 		}
+	}
+
+	public FieldType getFieldType(ColumnConfig column) {
+		switch (column.getColumnType()) {
+		case CHAR:
+		case CLOB:
+		case LONGVARCHAR:
+		case LONGNVARCHAR:
+		case NCHAR:
+		case NCLOB:
+		case NVARCHAR:
+		case VARCHAR:
+		case SQLXML:
+			return FieldType.STRING;
+		case NUMERIC:
+		case DECIMAL:
+			return FieldType.DOUBLE;
+		case BIT:
+		case BOOLEAN:
+			return FieldType.BOOLEAN;
+		case TINYINT:
+		case SMALLINT:
+		case INTEGER:
+			return FieldType.INTEGER;
+		case BIGINT:
+			return FieldType.LONG;
+		case REAL:
+			return FieldType.FLOAT;
+		case FLOAT:
+		case DOUBLE:
+			return FieldType.DOUBLE;
+		case BINARY:
+		case BLOB:
+		case VARBINARY:
+		case LONGVARBINARY:
+			return FieldType.BLOB;
+		case DATE:
+		case TIME:
+		case TIMESTAMP:
+			return FieldType.DATETIME;
+		default:
+			return FieldType.STRING;
+		}
+	}
+
+	@Override
+	protected Class<?> getJavaType(FieldDef fieldDef) {
+		ColumnConfig column = getColumnByFieldName(fieldDef.getName());
+		if (column == null || column.getColumnType() == null) {
+			return getJavaType(getColumnType(fieldDef.getType()));
+		}
+		return getJavaType(column.getColumnType());
+	}
+
+	public Class<?> getJavaType(JDBCType jdbcType) {
+		switch (jdbcType) {
+		case CHAR:
+		case VARCHAR:
+		case LONGVARCHAR:
+			return String.class;
+		case NUMERIC:
+		case DECIMAL:
+			return BigDecimal.class;
+		case BIT:
+		case BOOLEAN:
+			return Boolean.class;
+		case TINYINT:
+		case SMALLINT:
+			return Short.class;
+		case INTEGER:
+			return Integer.class;
+		case BIGINT:
+			return Long.class;
+		case REAL:
+			return Float.class;
+		case FLOAT:
+		case DOUBLE:
+			return Double.class;
+		case BINARY:
+		case VARBINARY:
+		case LONGVARBINARY:
+			return byte[].class;
+		case DATE:
+			return Date.class;
+		case TIME:
+			return Time.class;
+		case TIMESTAMP:
+			return Timestamp.class;
+		case CLOB:
+			return Clob.class;
+		case BLOB:
+			return byte[].class;
+		default:
+			return Object.class;
+		}
+	}
+
+	@Override
+	protected Collection<FieldDef> getFieldDefs() {
+		Collection<FieldDef> fieldDefs = super.getFieldDefs();
+		if (fieldDefs.isEmpty()) {
+			for (ColumnConfig column : columns) {
+				String fieldName = column.getFieldName();
+				FieldType fieldType = getFieldType(column);
+				FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
+				if (column.getColumnNullable() != null) {
+					fieldDef.setNullable(column.getColumnNullable());
+				}
+				fieldDefs.add(fieldDef);
+			}
+		}
+		return fieldDefs;
+	}
+
+	public void setColumns(Collection<ColumnConfig> columns) {
+		this.columns = columns;
 	}
 
 }
