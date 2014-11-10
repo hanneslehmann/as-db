@@ -9,14 +9,11 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Properties;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,19 +24,6 @@ import com.tibco.as.io.Destination;
 import com.tibco.as.log.LogFactory;
 
 public class DatabaseChannel extends Channel {
-
-	private static final String TABLE_NAME = "TABLE_NAME";
-	private static final String TABLE_CAT = "TABLE_CAT";
-	private static final String TABLE_SCHEM = "TABLE_SCHEM";
-	private static final String TABLE_TYPE = "TABLE_TYPE";
-	private static final String COLUMN_NAME = "COLUMN_NAME";
-	private static final String COLUMN_SIZE = "COLUMN_SIZE";
-	private static final String COLUMN_DATA_TYPE = "DATA_TYPE";
-	private static final String COLUMN_DECIMAL_DIGITS = "DECIMAL_DIGITS";
-	private static final String KEY_SEQ = "KEY_SEQ";
-	private static final String NULLABLE = "NULLABLE";
-	private static final String COLUMN_NUM_PREC_RADIX = "NUM_PREC_RADIX";
-	private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
 
 	private Logger log = LogFactory.getLog(DatabaseChannel.class);
 	private String configPath;
@@ -131,28 +115,7 @@ public class DatabaseChannel extends Channel {
 		FileInputStream in = new FileInputStream(configPath);
 		Database database = JAXB.unmarshal(in, Database.class);
 		for (Table table : database.getTables()) {
-			TableDestination destination = newDestination();
-			destination.setCatalog(table.getCatalog());
-			destination.setCountSQL(table.getCountSQL());
-			destination.setInsertSQL(table.getInsertSQL());
-			destination.setTable(table.getName());
-			destination.setSchema(table.getSchema());
-			destination.setSelectSQL(table.getSelectSQL());
-			destination.setSpaceName(table.getSpace());
-			destination.setType(table.getType());
-			for (Column column : table.getColumns()) {
-				ColumnConfig columnConfig = new ColumnConfig();
-				columnConfig.setFieldName(column.getField());
-				columnConfig.setColumnName(column.getName());
-				columnConfig.setColumnNullable(column.isNullable());
-				columnConfig.setColumnSize(column.getSize());
-				columnConfig.setColumnType(column.getType());
-				columnConfig.setDecimalDigits(column.getDecimals());
-				columnConfig.setKeySequence(column.getKeySequence());
-				columnConfig.setRadix(column.getRadix());
-				destination.getColumns().add(columnConfig);
-			}
-			addDestination(destination);
+			addDestination(new TableDestination(this, table));
 		}
 	}
 
@@ -190,102 +153,26 @@ public class DatabaseChannel extends Channel {
 
 	@Override
 	public TableDestination newDestination() {
-		return new TableDestination(this);
+		return new TableDestination(this, new Table());
 	}
 
 	@Override
 	protected Collection<Destination> getImportDestinations(
 			Destination destination) throws SQLException {
+		TableDestination tableDestination = (TableDestination) destination;
 		Collection<Destination> destinations = new ArrayList<Destination>();
-		destinations.addAll(getTables((TableDestination) destination));
+		for (Table table : tableDestination.getTables()) {
+			destinations.add(new TableDestination(this, table));
+		}
 		return destinations;
-	}
-
-	public Collection<TableDestination> getTables(TableDestination table)
-			throws SQLException {
-		String catalog = table.getCatalog();
-		String schema = table.getSchema();
-		String name = table.getTable();
-		String[] types = { table.getType().name() };
-		log.log(Level.FINE,
-				"Retrieving table descriptions matching catalog={0} schema={1} name={2} types={3}",
-				new Object[] { catalog, schema, name, Arrays.toString(types) });
-		ResultSet resultSet = getMetaData().getTables(catalog, schema, name,
-				types);
-		Collection<TableDestination> tables = new ArrayList<TableDestination>();
-		try {
-			while (resultSet.next()) {
-				TableDestination found = table.clone();
-				found.setCatalog(resultSet.getString(TABLE_CAT));
-				found.setTable(resultSet.getString(TABLE_NAME));
-				found.setSchema(resultSet.getString(TABLE_SCHEM));
-				found.setType(TableType.valueOf(resultSet.getString(TABLE_TYPE)));
-				tables.add(found);
-			}
-		} finally {
-			resultSet.close();
-		}
-		for (TableDestination destination : tables) {
-			Collection<ColumnConfig> columns = new ArrayList<ColumnConfig>();
-			for (ColumnConfig column : getColumns(destination)) {
-				ResultSet columnRS = getMetaData().getColumns(
-						destination.getCatalog(), destination.getSchema(),
-						destination.getTable(), column.getColumnName());
-				Map<Integer, ColumnConfig> columnMap = new TreeMap<Integer, ColumnConfig>();
-				try {
-					while (columnRS.next()) {
-						ColumnConfig found = column.clone();
-						found.setDecimalDigits(columnRS
-								.getInt(COLUMN_DECIMAL_DIGITS));
-						found.setColumnName(columnRS.getString(COLUMN_NAME));
-						found.setColumnNullable(columnRS.getBoolean(NULLABLE));
-						found.setRadix(columnRS.getInt(COLUMN_NUM_PREC_RADIX));
-						found.setColumnSize(columnRS.getInt(COLUMN_SIZE));
-						int dataType = columnRS.getInt(COLUMN_DATA_TYPE);
-						found.setColumnType(JDBCType.valueOf(dataType));
-						int ordinalPosition = columnRS
-								.getInt(COLUMN_ORDINAL_POSITION);
-						columnMap.put(ordinalPosition, found);
-					}
-				} finally {
-					columnRS.close();
-				}
-				columns.addAll(columnMap.values());
-			}
-			destination.setColumns(columns);
-			ResultSet keyRS = getMetaData().getPrimaryKeys(
-					destination.getCatalog(), destination.getSchema(),
-					destination.getTable());
-			try {
-				while (keyRS.next()) {
-					String columnName = keyRS.getString(COLUMN_NAME);
-					ColumnConfig column = destination.getColumn(columnName);
-					if (column == null) {
-						continue;
-					}
-					column.setKeySequence(keyRS.getShort(KEY_SEQ));
-				}
-			} finally {
-				keyRS.close();
-			}
-		}
-		return tables;
-	}
-
-	private Collection<ColumnConfig> getColumns(TableDestination destination) {
-		if (destination.getColumns().isEmpty()) {
-			return Arrays.asList(new ColumnConfig());
-		}
-		return destination.getColumns();
 	}
 
 	public void setTableNames(Collection<String> tableNames) {
 		for (String tableName : tableNames) {
-			TableDestination destination = newDestination();
-			destination.setTable(tableName);
-			addDestination(destination);
+			Table table = new Table();
+			table.setName(tableName);
+			addDestination(new TableDestination(this, table));
 		}
-
 	}
 
 }

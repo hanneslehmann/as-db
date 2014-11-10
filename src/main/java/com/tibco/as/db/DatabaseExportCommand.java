@@ -18,14 +18,15 @@ public class DatabaseExportCommand extends ExportCommand {
 	@Override
 	protected void configure(IDestination destination) {
 		TableDestination tableDestination = (TableDestination) destination;
-		if (tableDestination.getCatalog() == null) {
-			tableDestination.setCatalog(catalog);
+		Table table = tableDestination.getTable();
+		if (table.getCatalog() == null) {
+			table.setCatalog(catalog);
 		}
-		if (tableDestination.getSchema() == null) {
-			tableDestination.setSchema(schema);
+		if (table.getSchema() == null) {
+			table.setSchema(schema);
 		}
-		if (tableDestination.getTable() == null) {
-			tableDestination.setTable(tableName);
+		if (table.getName() == null) {
+			table.setName(tableName);
 		}
 		super.configure(destination);
 	}

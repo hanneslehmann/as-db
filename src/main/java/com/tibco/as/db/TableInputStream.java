@@ -21,8 +21,8 @@ public class TableInputStream implements IInputStream {
 	@Override
 	public synchronized void open() throws SQLException {
 		resultSet = destination.executeQuery(destination.getSelectSQL());
-		if (destination.getFetchSize() != null) {
-			resultSet.setFetchSize(destination.getFetchSize());
+		if (destination.getTable().getFetchSize() != null) {
+			resultSet.setFetchSize(destination.getTable().getFetchSize());
 		}
 		ResultSetMetaData metaData = resultSet.getMetaData();
 		for (int index = 1; index <= metaData.getColumnCount(); index++) {
@@ -31,16 +31,16 @@ public class TableInputStream implements IInputStream {
 			int scale = metaData.getScale(index);
 			boolean nullable = metaData.isNullable(index) == ResultSetMetaData.columnNullable;
 			int dataType = metaData.getColumnType(index);
-			ColumnConfig column = destination.getColumn(columnName);
+			Column column = destination.getColumn(columnName);
 			if (column == null) {
-				column = new ColumnConfig();
-				column.setColumnName(columnName);
-				destination.getColumns().add(column);
+				column = new Column();
+				column.setName(columnName);
+				destination.getTable().getColumns().add(column);
 			}
-			column.setColumnSize(precision);
-			column.setDecimalDigits(scale);
-			column.setColumnNullable(nullable);
-			column.setColumnType(JDBCType.valueOf(dataType));
+			column.setSize(precision);
+			column.setDecimals(scale);
+			column.setNullable(nullable);
+			column.setType(JDBCType.valueOf(dataType));
 		}
 		accessors = destination.getAccessors();
 		count = getCount();

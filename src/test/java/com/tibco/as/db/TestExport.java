@@ -51,7 +51,7 @@ public class TestExport extends TestBase {
 		java.sql.Connection connection = getConnection();
 		Statement statement = connection.createStatement();
 		statement.execute("CREATE SCHEMA ms");
-		String sql = "CREATE TABLE ms.MySpace (field1 BIGINT not null, field2 VARCHAR not null, field3 TIMESTAMP null, field4 BLOB null, field5 BOOLEAN null, field6 CHAR null, field7 DOUBLE PRECISION null, field8 FLOAT null, field9 INTEGER null, field10 SMALLINT null, Primary Key (field1,field2))";
+		String sql = "CREATE TABLE \"MySpace\" (\"field1\" BIGINT not null, \"field2\" VARCHAR not null, \"field3\" TIMESTAMP null, \"field4\" BLOB null, \"field5\" BOOLEAN null, \"field6\" CHAR null, \"field7\" DOUBLE PRECISION null, \"field8\" FLOAT null, \"field9\" INTEGER null, \"field10\" SMALLINT null, Primary Key (\"field1\",\"field2\"))";
 		statement.execute(sql);
 		testExport();
 		connection.close();

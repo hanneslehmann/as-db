@@ -32,26 +32,27 @@ public class DatabaseImportCommand extends ImportCommand {
 	@Override
 	protected void configure(IDestination destination) {
 		TableDestination tableDestination = (TableDestination) destination;
+		Table table = tableDestination.getTable();
 		if (catalog != null) {
-			tableDestination.setCatalog(catalog);
+			table.setCatalog(catalog);
 		}
 		if (schema != null) {
-			tableDestination.setSchema(schema);
+			table.setSchema(schema);
 		}
 		if (fetchSize != null) {
-			tableDestination.setFetchSize(fetchSize);
+			table.setFetchSize(fetchSize);
 		}
 		if (selectSQL != null) {
-			tableDestination.setSelectSQL(selectSQL);
+			table.setSelectSQL(selectSQL);
 		}
 		if (countSQL != null) {
-			tableDestination.setCountSQL(countSQL);
+			table.setCountSQL(countSQL);
 		}
 		if (insertSQL != null) {
-			tableDestination.setInsertSQL(insertSQL);
+			table.setInsertSQL(insertSQL);
 		}
 		if (tableType != null) {
-			tableDestination.setType(tableType);
+			table.setType(tableType);
 		}
 		super.configure(tableDestination);
 	}

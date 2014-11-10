@@ -2,6 +2,7 @@ package com.tibco.as.db;
 
 import java.math.BigDecimal;
 import java.sql.Clob;
+import java.sql.DatabaseMetaData;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,27 +35,32 @@ public class TableDestination extends Destination {
 	private static final int DEFAULT_BOOLEAN_SIZE = 1;
 	private static final int DEFAULT_CHAR_SIZE = 1;
 	private static final int DEFAULT_LONG_SIZE = 19;
+	private static final String TABLE_NAME = "TABLE_NAME";
+	private static final String TABLE_CAT = "TABLE_CAT";
+	private static final String TABLE_SCHEM = "TABLE_SCHEM";
+	private static final String TABLE_TYPE = "TABLE_TYPE";
+	private static final String COLUMN_NAME = "COLUMN_NAME";
+	private static final String COLUMN_SIZE = "COLUMN_SIZE";
+	private static final String COLUMN_DATA_TYPE = "DATA_TYPE";
+	private static final String COLUMN_DECIMAL_DIGITS = "DECIMAL_DIGITS";
+	private static final String KEY_SEQ = "KEY_SEQ";
+	private static final String NULLABLE = "NULLABLE";
+	private static final String COLUMN_NUM_PREC_RADIX = "NUM_PREC_RADIX";
+	private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
 
 	private Logger log = LogFactory.getLog(TableDestination.class);
 	private DatabaseChannel channel;
-	private String selectSQL;
-	private String countSQL;
-	private String insertSQL;
-	private String catalog;
-	private String schema;
-	private String table;
-	private TableType type;
-	private Integer fetchSize;
-	private Collection<ColumnConfig> columns = new ArrayList<ColumnConfig>();
+	private Table table;
 
-	public TableDestination(DatabaseChannel channel) {
+	public TableDestination(DatabaseChannel channel, Table table) {
 		super(channel);
 		this.channel = channel;
+		this.table = table;
 	}
 
 	@Override
 	public TableDestination clone() {
-		TableDestination destination = new TableDestination(channel);
+		TableDestination destination = new TableDestination(channel, table);
 		copyTo(destination);
 		return destination;
 	}
@@ -62,34 +68,70 @@ public class TableDestination extends Destination {
 	@Override
 	public void copyTo(Destination target) {
 		TableDestination destination = (TableDestination) target;
-		if (destination.catalog == null) {
-			destination.catalog = catalog;
-		}
-		if (destination.countSQL == null) {
-			destination.countSQL = countSQL;
-		}
-		if (destination.fetchSize == null) {
-			destination.fetchSize = fetchSize;
-		}
-		if (destination.insertSQL == null) {
-			destination.insertSQL = insertSQL;
-		}
-		if (destination.schema == null) {
-			destination.schema = schema;
-		}
-		if (destination.selectSQL == null) {
-			destination.selectSQL = selectSQL;
-		}
-		if (destination.table == null) {
-			destination.table = table;
-		}
-		if (destination.type == null) {
-			destination.type = type;
-		}
-		for (ColumnConfig column : columns) {
-			destination.columns.add(column.clone());
-		}
+		copy(table, destination.table);
 		super.copyTo(destination);
+	}
+
+	public static void copy(Table source, Table target) {
+		if (target.getCatalog() == null) {
+			target.setCatalog(source.getCatalog());
+		}
+		if (target.getCountSQL() == null) {
+			target.setCountSQL(source.getCountSQL());
+		}
+		if (target.getInsertSQL() == null) {
+			target.setInsertSQL(source.getInsertSQL());
+		}
+		if (target.getName() == null) {
+			target.setName(source.getName());
+		}
+		if (target.getSchema() == null) {
+			target.setSchema(source.getSchema());
+		}
+		if (target.getSelectSQL() == null) {
+			target.setSelectSQL(source.getSelectSQL());
+		}
+		if (target.getSpace() == null) {
+			target.setSpace(source.getSpace());
+		}
+		if (target.getType() == null) {
+			target.setType(source.getType());
+		}
+		for (Column sourceColumn : source.getColumns()) {
+			Column targetColumn = getColumn(target, getColumnName(sourceColumn));
+			if (targetColumn == null) {
+				targetColumn = new Column();
+				target.getColumns().add(targetColumn);
+			}
+			copy(sourceColumn, targetColumn);
+		}
+	}
+
+	public static void copy(Column source, Column target) {
+		if (target.getDecimals() == null) {
+			target.setDecimals(source.getDecimals());
+		}
+		if (target.getField() == null) {
+			target.setField(source.getField());
+		}
+		if (target.getKeySequence() == null) {
+			target.setKeySequence(source.getKeySequence());
+		}
+		if (target.getName() == null) {
+			target.setName(source.getName());
+		}
+		if (target.isNullable() == null) {
+			target.setNullable(source.isNullable());
+		}
+		if (target.getRadix() == null) {
+			target.setRadix(source.getRadix());
+		}
+		if (target.getSize() == null) {
+			target.setSize(source.getSize());
+		}
+		if (target.getType() == null) {
+			target.setType(source.getType());
+		}
 	}
 
 	@Override
@@ -102,39 +144,57 @@ public class TableDestination extends Destination {
 		Collection<String> keys = super.getKeys();
 		if (keys.isEmpty()) {
 			for (String primaryKey : getPrimaryKeys()) {
-				ColumnConfig column = getColumn(primaryKey);
+				Column column = getColumn(primaryKey);
 				if (column == null) {
 					continue;
 				}
-				keys.add(column.getFieldName());
+				keys.add(getFieldName(column));
 			}
 		}
 		return keys;
 	}
 
-	public ColumnConfig getColumn(String name) {
-		for (ColumnConfig column : getColumns()) {
-			if (name.equals(column.getColumnName())) {
+	private String getFieldName(Column column) {
+		if (column.getField() == null) {
+			return column.getName();
+		}
+		return column.getField();
+	}
+
+	private static Column getColumn(Table table, String columnName) {
+		for (Column column : table.getColumns()) {
+			if (columnName.equals(getColumnName(column))) {
 				return column;
 			}
 		}
 		return null;
 	}
 
+	public Column getColumn(String name) {
+		return getColumn(table, name);
+	}
+
+	private static String getColumnName(Column column) {
+		if (column.getName() == null) {
+			return column.getField();
+		}
+		return column.getName();
+	}
+
 	public Collection<String> getPrimaryKeys() {
 		Map<Short, String> keyMap = new TreeMap<Short, String>();
-		for (ColumnConfig column : getColumns()) {
+		for (Column column : table.getColumns()) {
 			if (column.getKeySequence() == null) {
 				continue;
 			}
-			keyMap.put(column.getKeySequence(), column.getColumnName());
+			keyMap.put(column.getKeySequence(), getColumnName(column));
 		}
 		if (keyMap.isEmpty()) {
 			Collection<String> primaryKeys = new ArrayList<String>();
 			for (String key : super.getKeys()) {
-				ColumnConfig column = getColumnByFieldName(key);
+				Column column = getColumnByFieldName(key);
 				if (column != null) {
-					primaryKeys.add(column.getColumnName());
+					primaryKeys.add(getColumnName(column));
 				}
 			}
 			return primaryKeys;
@@ -142,9 +202,9 @@ public class TableDestination extends Destination {
 		return keyMap.values();
 	}
 
-	private ColumnConfig getColumnByFieldName(String fieldName) {
-		for (ColumnConfig column : columns) {
-			if (column.getFieldName().equals(fieldName)) {
+	private Column getColumnByFieldName(String fieldName) {
+		for (Column column : table.getColumns()) {
+			if (getFieldName(column).equals(fieldName)) {
 				return column;
 			}
 		}
@@ -152,112 +212,71 @@ public class TableDestination extends Destination {
 	}
 
 	public String getSelectSQL() {
-		if (selectSQL == null) {
+		if (table.getSelectSQL() == null) {
 			String from = getCommaSeparated(getColumnNames());
-			selectSQL = MessageFormat.format(SELECT, from,
-					getFullyQualifiedName());
+			return MessageFormat.format(SELECT, from, getFullyQualifiedName());
 		}
-		return selectSQL;
-	}
-
-	public void setSelectSQL(String selectSQL) {
-		this.selectSQL = selectSQL;
+		return table.getSelectSQL();
 	}
 
 	public String getCountSQL() {
-		if (countSQL == null && selectSQL == null) {
-			countSQL = MessageFormat.format(SELECT, "COUNT(*)",
-					getFullyQualifiedName());
+		if (table.getCountSQL() == null && table.getSelectSQL() == null) {
+			table.setCountSQL(MessageFormat.format(SELECT, "COUNT(*)",
+					getFullyQualifiedName()));
 		}
-		return countSQL;
-	}
-
-	public void setCountSQL(String countSQL) {
-		this.countSQL = countSQL;
+		return table.getCountSQL();
 	}
 
 	public String getInsertSQL() {
-		if (insertSQL == null) {
+		if (table.getInsertSQL() == null) {
 			String tableName = getFullyQualifiedName();
 			String[] columnNames = getColumnNames();
 			String[] questionMarks = new String[columnNames.length];
 			Arrays.fill(questionMarks, "?");
-			insertSQL = MessageFormat.format(
+			table.setInsertSQL(MessageFormat.format(
 					"INSERT INTO {0} ({1}) VALUES ({2})", tableName,
 					getCommaSeparated(columnNames),
-					getCommaSeparated(questionMarks));
+					getCommaSeparated(questionMarks)));
 		}
-		return insertSQL;
+		return table.getInsertSQL();
 	}
 
-	public void setInsertSQL(String insertSQL) {
-		this.insertSQL = insertSQL;
-	}
-
-	public String getCatalog() {
-		return catalog;
-	}
-
-	public void setCatalog(String catalog) {
-		this.catalog = catalog;
-	}
-
-	public String getSchema() {
-		return schema;
-	}
-
-	public void setSchema(String schema) {
-		this.schema = schema;
-	}
-
-	public String getTable() {
-		if (table == null) {
-			return getSpaceName();
-		}
+	public Table getTable() {
 		return table;
 	}
 
-	public void setTable(String name) {
-		this.table = name;
+	public String getTableName() {
+		return getTableName(table);
 	}
 
 	public TableType getType() {
-		if (type == null) {
+		if (table.getType() == null) {
 			return TableType.TABLE;
 		}
-		return type;
-	}
-
-	public void setType(TableType type) {
-		this.type = type;
-	}
-
-	public Integer getFetchSize() {
-		return fetchSize;
-	}
-
-	public void setFetchSize(Integer fetchSize) {
-		this.fetchSize = fetchSize;
+		return table.getType();
 	}
 
 	@Override
 	public String getSpaceName() {
 		String spaceName = super.getSpaceName();
 		if (spaceName == null) {
-			return table;
+			if (table.getSpace() == null) {
+				return table.getName();
+			}
+			return table.getSpace();
 		}
 		return spaceName;
 	}
 
 	public String getFullyQualifiedName() {
 		String namespace = "";
-		if (getCatalog() != null) {
-			namespace += quote(getCatalog()) + ".";
+		if (table.getCatalog() != null) {
+			namespace += quote(table.getCatalog()) + ".";
 		}
-		if (getSchema() != null) {
-			namespace += quote(getSchema()) + ".";
+		if (table.getSchema() != null) {
+			namespace += quote(table.getSchema()) + ".";
 		}
-		return namespace + quote(getTable());
+		return namespace + quote(getTableName());
 	}
 
 	public String quote(String name) {
@@ -265,13 +284,12 @@ public class TableDestination extends Destination {
 	}
 
 	public String[] getColumnNames() {
-		Collection<ColumnConfig> columns = getColumns();
-		if (columns.isEmpty()) {
+		if (table.getColumns().isEmpty()) {
 			return new String[] { "*" };
 		}
 		Collection<String> columnNames = new ArrayList<String>();
-		for (ColumnConfig column : columns) {
-			columnNames.add(quote(column.getColumnName()));
+		for (Column column : table.getColumns()) {
+			columnNames.add(quote(getColumnName(column)));
 		}
 		return columnNames.toArray(new String[columnNames.size()]);
 	}
@@ -292,7 +310,7 @@ public class TableDestination extends Destination {
 
 	@Override
 	public String getName() {
-		return getTable();
+		return getTableName();
 	}
 
 	private String getCommaSeparated(String[] elements) {
@@ -320,21 +338,21 @@ public class TableDestination extends Destination {
 	public String getCreateSQL() throws SQLException {
 		String query = "";
 		query += "CREATE TABLE " + getFullyQualifiedName() + " (";
-		for (ColumnConfig column : getColumns()) {
-			String columnName = quote(column.getColumnName());
-			JDBCType type = column.getColumnType();
+		for (Column column : table.getColumns()) {
+			String columnName = quote(getColumnName(column));
+			JDBCType type = column.getType();
 			String typeName = type.getName();
 			query += columnName + " " + typeName;
-			Integer size = column.getColumnSize();
+			Integer size = column.getSize();
 			if (size != null) {
 				query += "(";
 				query += size;
-				if (column.getDecimalDigits() != null) {
-					query += "," + column.getDecimalDigits();
+				if (column.getDecimals() != null) {
+					query += "," + column.getDecimals();
 				}
 				query += ")";
 			}
-			if (!Boolean.TRUE.equals(column.getColumnNullable())) {
+			if (!Boolean.TRUE.equals(column.isNullable())) {
 				query += " not";
 			}
 			query += " null, ";
@@ -353,28 +371,32 @@ public class TableDestination extends Destination {
 		return query;
 	}
 
-	public Collection<ColumnConfig> getColumns() {
-		return columns;
-	}
-
 	@Override
 	public void setSpaceDef(SpaceDef spaceDef) {
 		super.setSpaceDef(spaceDef);
+		if (table.getColumns().isEmpty()) {
+			for (String fieldName : getFieldNames()) {
+				Column column = new Column();
+				column.setField(fieldName);
+				table.getColumns().add(column);
+			}
+		}
 		for (FieldDef fieldDef : getFieldDefs()) {
-			ColumnConfig column = getColumnByFieldName(fieldDef.getName());
+			Column column = getColumnByFieldName(fieldDef.getName());
 			if (column == null) {
-				column = new ColumnConfig();
-				columns.add(column);
+				continue;
 			}
-			column.setFieldName(fieldDef.getName());
-			if (column.getColumnType() == null) {
-				column.setColumnType(getColumnType(fieldDef.getType()));
+			if (column.getField() == null) {
+				column.setField(fieldDef.getName());
 			}
-			if (column.getColumnNullable() == null) {
-				column.setColumnNullable(fieldDef.isNullable());
+			if (column.getType() == null) {
+				column.setType(getColumnType(fieldDef.getType()));
 			}
-			if (column.getColumnSize() == null) {
-				column.setColumnSize(getColumnSize(fieldDef.getType()));
+			if (column.isNullable() == null) {
+				column.setNullable(fieldDef.isNullable());
+			}
+			if (column.getSize() == null) {
+				column.setSize(getColumnSize(fieldDef.getType()));
 			}
 		}
 	}
@@ -460,8 +482,8 @@ public class TableDestination extends Destination {
 	public IPreparedStatementAccessor[] getAccessors() {
 		Collection<IPreparedStatementAccessor> result = new ArrayList<IPreparedStatementAccessor>();
 		int index = 1;
-		for (ColumnConfig column : columns) {
-			result.add(getAccessor(index, column.getColumnType()));
+		for (Column column : table.getColumns()) {
+			result.add(getAccessor(index, column.getType()));
 			index++;
 		}
 		return result.toArray(new IPreparedStatementAccessor[result.size()]);
@@ -476,8 +498,8 @@ public class TableDestination extends Destination {
 		}
 	}
 
-	public FieldType getFieldType(ColumnConfig column) {
-		switch (column.getColumnType()) {
+	public FieldType getFieldType(Column column) {
+		switch (column.getType()) {
 		case CHAR:
 		case CLOB:
 		case LONGVARCHAR:
@@ -521,11 +543,11 @@ public class TableDestination extends Destination {
 
 	@Override
 	protected Class<?> getJavaType(FieldDef fieldDef) {
-		ColumnConfig column = getColumnByFieldName(fieldDef.getName());
-		if (column == null || column.getColumnType() == null) {
+		Column column = getColumnByFieldName(fieldDef.getName());
+		if (column == null || column.getType() == null) {
 			return getJavaType(getColumnType(fieldDef.getType()));
 		}
-		return getJavaType(column.getColumnType());
+		return getJavaType(column.getType());
 	}
 
 	public Class<?> getJavaType(JDBCType jdbcType) {
@@ -575,12 +597,12 @@ public class TableDestination extends Destination {
 	protected Collection<FieldDef> getFieldDefs() {
 		Collection<FieldDef> fieldDefs = super.getFieldDefs();
 		if (fieldDefs.isEmpty()) {
-			for (ColumnConfig column : columns) {
-				String fieldName = column.getFieldName();
+			for (Column column : table.getColumns()) {
+				String fieldName = getFieldName(column);
 				FieldType fieldType = getFieldType(column);
 				FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
-				if (column.getColumnNullable() != null) {
-					fieldDef.setNullable(column.getColumnNullable());
+				if (column.isNullable() != null) {
+					fieldDef.setNullable(column.isNullable());
 				}
 				fieldDefs.add(fieldDef);
 			}
@@ -588,8 +610,103 @@ public class TableDestination extends Destination {
 		return fieldDefs;
 	}
 
-	public void setColumns(Collection<ColumnConfig> columns) {
-		this.columns = columns;
+	private DatabaseMetaData getMetaData() throws SQLException {
+		return channel.getMetaData();
+	}
+
+	public Collection<Table> getTables() throws SQLException {
+		String catalog = table.getCatalog();
+		String schema = table.getSchema();
+		String name = getTableName(table);
+		String[] types = new String[] { getTableType(table).name() };
+		log.log(Level.FINE,
+				"Retrieving table descriptions matching catalog={0} schema={1} name={2} types={3}",
+				new Object[] { catalog, schema, name, types });
+		ResultSet rs = getMetaData().getTables(catalog, schema, name, types);
+		Collection<Table> tables = new ArrayList<Table>();
+		try {
+			while (rs.next()) {
+				Table t = new Table();
+				t.setCountSQL(table.getCountSQL());
+				t.setFetchSize(table.getFetchSize());
+				t.setInsertSQL(table.getInsertSQL());
+				t.setSelectSQL(table.getSelectSQL());
+				t.setSpace(table.getSpace());
+				t.setCatalog(rs.getString(TABLE_CAT));
+				t.setName(rs.getString(TABLE_NAME));
+				t.setSchema(rs.getString(TABLE_SCHEM));
+				t.setType(TableType.valueOf(rs.getString(TABLE_TYPE)));
+				Map<Integer, Column> map = new TreeMap<Integer, Column>();
+				for (Column column : getColumns(table)) {
+					ResultSet columnRS = getMetaData().getColumns(
+							t.getCatalog(), t.getSchema(), getTableName(t),
+							getColumnName(column));
+					try {
+						while (columnRS.next()) {
+							Column c = new Column();
+							c.setName(columnRS.getString(COLUMN_NAME));
+							c.setField(column.getField());
+							c.setDecimals(columnRS
+									.getInt(COLUMN_DECIMAL_DIGITS));
+							c.setNullable(columnRS.getBoolean(NULLABLE));
+							c.setRadix(columnRS.getInt(COLUMN_NUM_PREC_RADIX));
+							c.setSize(columnRS.getInt(COLUMN_SIZE));
+							c.setType(JDBCType.valueOf(columnRS
+									.getInt(COLUMN_DATA_TYPE)));
+							map.put(columnRS.getInt(COLUMN_ORDINAL_POSITION), c);
+						}
+					} finally {
+						columnRS.close();
+					}
+				}
+				t.getColumns().addAll(map.values());
+				ResultSet keyRS = getMetaData().getPrimaryKeys(t.getCatalog(),
+						t.getSchema(), t.getName());
+				try {
+					while (keyRS.next()) {
+						String columnName = keyRS.getString(COLUMN_NAME);
+						Column column = getColumn(t, columnName);
+						if (column == null) {
+							continue;
+						}
+						column.setKeySequence(keyRS.getShort(KEY_SEQ));
+					}
+				} finally {
+					keyRS.close();
+				}
+				tables.add(t);
+			}
+		} finally {
+			rs.close();
+		}
+		return tables;
+	}
+
+	private String getTableName(Table table) {
+		if (table.getName() == null) {
+			return table.getSpace();
+		}
+		return table.getName();
+	}
+
+	private Collection<Column> getColumns(Table table) {
+		if (table.getColumns().isEmpty()) {
+			return Arrays.asList(new Column());
+		}
+		return table.getColumns();
+	}
+
+	private TableType getTableType(Table table) {
+		if (table.getType() == null) {
+			return TableType.TABLE;
+		}
+		return table.getType();
+	}
+
+	@Override
+	public void setSpaceName(String spaceName) {
+		table.setSpace(spaceName);
+		super.setSpaceName(spaceName);
 	}
 
 }

@@ -25,14 +25,13 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 
 	@Override
 	public void open() throws Exception {
-		Collection<TableDestination> tables = destination.getChannel()
-				.getTables(destination);
+		Collection<Table> tables = destination.getTables();
 		if (tables.isEmpty()) {
 			// create table
 			destination.execute(destination.getCreateSQL());
 		} else {
-			for (TableDestination table : tables) {
-				table.copyTo(destination);
+			for (Table table : tables) {
+				TableDestination.copy(table, destination.getTable());
 			}
 		}
 		String sql = destination.getInsertSQL();

@@ -24,8 +24,9 @@
     <xsd:attribute name="catalog" type="xsd:string" />
     <xsd:attribute name="schema" type="xsd:string" />
     <xsd:attribute name="name" type="xsd:string" />
-    <xsd:attribute name="type" type="tableType" default="TABLE" />
+    <xsd:attribute name="type" type="tableType" />
     <xsd:attribute name="space" type="xsd:string" />
+    <xsd:attribute name="fetchSize" type="xsd:int" />
   </xsd:complexType>
 
   <xsd:complexType name="column">
