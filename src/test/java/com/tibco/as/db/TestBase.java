@@ -11,8 +11,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.tibco.as.log.LogFactory;
-import com.tibco.as.log.LogLevel;
 import com.tibco.as.space.ASException;
 import com.tibco.as.space.DateTime;
 import com.tibco.as.space.FieldDef;
@@ -23,6 +21,8 @@ import com.tibco.as.space.Metaspace;
 import com.tibco.as.space.Space;
 import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
+import com.tibco.as.util.log.LogFactory;
+import com.tibco.as.util.log.LogLevel;
 
 public class TestBase {
 

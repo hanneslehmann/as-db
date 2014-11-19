@@ -2,7 +2,6 @@ package com.tibco.as.db;
 
 import java.math.BigDecimal;
 import java.sql.Clob;
-import java.sql.DatabaseMetaData;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,6 +13,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -21,10 +21,10 @@ import java.util.logging.Logger;
 
 import com.tibco.as.io.Destination;
 import com.tibco.as.io.IInputStream;
-import com.tibco.as.log.LogFactory;
 import com.tibco.as.space.FieldDef;
 import com.tibco.as.space.FieldDef.FieldType;
 import com.tibco.as.space.SpaceDef;
+import com.tibco.as.util.log.LogFactory;
 
 public class TableDestination extends Destination {
 
@@ -35,10 +35,6 @@ public class TableDestination extends Destination {
 	private static final int DEFAULT_BOOLEAN_SIZE = 1;
 	private static final int DEFAULT_CHAR_SIZE = 1;
 	private static final int DEFAULT_LONG_SIZE = 19;
-	private static final String TABLE_NAME = "TABLE_NAME";
-	private static final String TABLE_CAT = "TABLE_CAT";
-	private static final String TABLE_SCHEM = "TABLE_SCHEM";
-	private static final String TABLE_TYPE = "TABLE_TYPE";
 	private static final String COLUMN_NAME = "COLUMN_NAME";
 	private static final String COLUMN_SIZE = "COLUMN_SIZE";
 	private static final String COLUMN_DATA_TYPE = "DATA_TYPE";
@@ -46,7 +42,7 @@ public class TableDestination extends Destination {
 	private static final String KEY_SEQ = "KEY_SEQ";
 	private static final String NULLABLE = "NULLABLE";
 	private static final String COLUMN_NUM_PREC_RADIX = "NUM_PREC_RADIX";
-	private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
+	// private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
 
 	private Logger log = LogFactory.getLog(TableDestination.class);
 	private DatabaseChannel channel;
@@ -58,56 +54,92 @@ public class TableDestination extends Destination {
 		this.table = table;
 	}
 
-	@Override
-	public TableDestination clone() {
-		TableDestination destination = new TableDestination(channel, table);
-		copyTo(destination);
-		return destination;
+	public void setTable(Table table) {
+		this.table = table;
 	}
 
-	@Override
-	public void copyTo(Destination target) {
-		TableDestination destination = (TableDestination) target;
-		copy(table, destination.table);
-		super.copyTo(destination);
+	private void setPrimaryKeys() throws SQLException {
+		Map<String, Column> nameMap = new HashMap<String, Column>();
+		for (Column column : table.getColumns()) {
+			nameMap.put(column.getName(), column);
+		}
+		ResultSet keyRS = channel.getMetaData().getPrimaryKeys(
+				table.getCatalog(), table.getSchema(), table.getName());
+		try {
+			while (keyRS.next()) {
+				String columnName = keyRS.getString(COLUMN_NAME);
+				Column column = nameMap.get(columnName);
+				if (column == null) {
+					continue;
+				}
+				column.setKeySequence(keyRS.getShort(KEY_SEQ));
+			}
+		} finally {
+			keyRS.close();
+		}
 	}
 
-	public static void copy(Table source, Table target) {
-		if (target.getCatalog() == null) {
-			target.setCatalog(source.getCatalog());
+	public void setColumns() throws SQLException {
+		// Map<Integer, Column> positionMap = new TreeMap<Integer, Column>();
+		ResultSet columnRS = channel.getMetaData().getColumns(
+				table.getCatalog(), table.getSchema(), table.getName(), null);
+		try {
+			while (columnRS.next()) {
+				String name = columnRS.getString(COLUMN_NAME);
+				Column column = getColumn(name);
+				column.setName(name);
+				column.setDecimals(columnRS.getInt(COLUMN_DECIMAL_DIGITS));
+				column.setNullable(columnRS.getBoolean(NULLABLE));
+				column.setRadix(columnRS.getInt(COLUMN_NUM_PREC_RADIX));
+				column.setSize(columnRS.getInt(COLUMN_SIZE));
+				column.setType(JDBCType.valueOf(columnRS
+						.getInt(COLUMN_DATA_TYPE)));
+				// int position = columnRS.getInt(COLUMN_ORDINAL_POSITION);
+				// positionMap.put(position, column);
+			}
+		} finally {
+			columnRS.close();
 		}
-		if (target.getCountSQL() == null) {
-			target.setCountSQL(source.getCountSQL());
+		setPrimaryKeys();
+		// return positionMap.values();
+	}
+
+	public void copy(Table source) {
+		if (table.getCatalog() == null) {
+			table.setCatalog(source.getCatalog());
 		}
-		if (target.getInsertSQL() == null) {
-			target.setInsertSQL(source.getInsertSQL());
+		if (table.getCountSQL() == null) {
+			table.setCountSQL(source.getCountSQL());
 		}
-		if (target.getName() == null) {
-			target.setName(source.getName());
+		if (table.getInsertSQL() == null) {
+			table.setInsertSQL(source.getInsertSQL());
 		}
-		if (target.getSchema() == null) {
-			target.setSchema(source.getSchema());
+		if (table.getName() == null) {
+			table.setName(source.getName());
 		}
-		if (target.getSelectSQL() == null) {
-			target.setSelectSQL(source.getSelectSQL());
+		if (table.getSchema() == null) {
+			table.setSchema(source.getSchema());
 		}
-		if (target.getSpace() == null) {
-			target.setSpace(source.getSpace());
+		if (table.getSelectSQL() == null) {
+			table.setSelectSQL(source.getSelectSQL());
 		}
-		if (target.getType() == null) {
-			target.setType(source.getType());
+		if (table.getSpace() == null) {
+			table.setSpace(source.getSpace());
+		}
+		if (table.getType() == null) {
+			table.setType(source.getType());
 		}
 		for (Column sourceColumn : source.getColumns()) {
-			Column targetColumn = getColumn(target, getColumnName(sourceColumn));
+			Column targetColumn = getColumn(table, getColumnName(sourceColumn));
 			if (targetColumn == null) {
 				targetColumn = new Column();
-				target.getColumns().add(targetColumn);
+				table.getColumns().add(targetColumn);
 			}
 			copy(sourceColumn, targetColumn);
 		}
 	}
 
-	public static void copy(Column source, Column target) {
+	private void copy(Column source, Column target) {
 		if (target.getDecimals() == null) {
 			target.setDecimals(source.getDecimals());
 		}
@@ -140,9 +172,31 @@ public class TableDestination extends Destination {
 	}
 
 	@Override
-	public Collection<String> getKeys() {
-		Collection<String> keys = super.getKeys();
+	public SpaceDef getSpaceDef() {
+		SpaceDef spaceDef = super.getSpaceDef();
+		if (spaceDef.getName() == null || spaceDef.getName().isEmpty()) {
+			spaceDef.setName(getSpaceName());
+		}
+		Collection<FieldDef> fieldDefs = spaceDef.getFieldDefs();
+		if (fieldDefs.isEmpty()) {
+			for (Column column : table.getColumns()) {
+				String fieldName = getFieldName(column);
+				FieldType fieldType = getFieldType(column);
+				FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
+				if (column.isNullable() != null) {
+					fieldDef.setNullable(column.isNullable());
+				}
+				fieldDefs.add(fieldDef);
+			}
+		}
+		Collection<String> keys = spaceDef.getKeyDef().getFieldNames();
 		if (keys.isEmpty()) {
+			try {
+				setPrimaryKeys();
+			} catch (SQLException e) {
+				log.log(Level.SEVERE,
+						"Could not retrieve primary keys from metadata", e);
+			}
 			for (String primaryKey : getPrimaryKeys()) {
 				Column column = getColumn(primaryKey);
 				if (column == null) {
@@ -151,7 +205,14 @@ public class TableDestination extends Destination {
 				keys.add(getFieldName(column));
 			}
 		}
-		return keys;
+		return spaceDef;
+	}
+
+	private String getSpaceName() {
+		if (table.getSpace() == null) {
+			return table.getName();
+		}
+		return table.getSpace();
 	}
 
 	private String getFieldName(Column column) {
@@ -181,23 +242,13 @@ public class TableDestination extends Destination {
 		return column.getName();
 	}
 
-	public Collection<String> getPrimaryKeys() {
+	private Collection<String> getPrimaryKeys() {
 		Map<Short, String> keyMap = new TreeMap<Short, String>();
 		for (Column column : table.getColumns()) {
 			if (column.getKeySequence() == null) {
 				continue;
 			}
 			keyMap.put(column.getKeySequence(), getColumnName(column));
-		}
-		if (keyMap.isEmpty()) {
-			Collection<String> primaryKeys = new ArrayList<String>();
-			for (String key : super.getKeys()) {
-				Column column = getColumnByFieldName(key);
-				if (column != null) {
-					primaryKeys.add(getColumnName(column));
-				}
-			}
-			return primaryKeys;
 		}
 		return keyMap.values();
 	}
@@ -254,18 +305,6 @@ public class TableDestination extends Destination {
 			return TableType.TABLE;
 		}
 		return table.getType();
-	}
-
-	@Override
-	public String getSpaceName() {
-		String spaceName = super.getSpaceName();
-		if (spaceName == null) {
-			if (table.getSpace() == null) {
-				return table.getName();
-			}
-			return table.getSpace();
-		}
-		return spaceName;
 	}
 
 	public String getFullyQualifiedName() {
@@ -374,14 +413,20 @@ public class TableDestination extends Destination {
 	@Override
 	public void setSpaceDef(SpaceDef spaceDef) {
 		super.setSpaceDef(spaceDef);
+		if (table.getName() == null) {
+			table.setName(spaceDef.getName());
+		}
+		if (table.getSpace() == null) {
+			table.setSpace(spaceDef.getName());
+		}
 		if (table.getColumns().isEmpty()) {
-			for (String fieldName : getFieldNames()) {
+			for (FieldDef fieldDef : getSpaceDef().getFieldDefs()) {
 				Column column = new Column();
-				column.setField(fieldName);
+				column.setField(fieldDef.getName());
 				table.getColumns().add(column);
 			}
 		}
-		for (FieldDef fieldDef : getFieldDefs()) {
+		for (FieldDef fieldDef : getSpaceDef().getFieldDefs()) {
 			Column column = getColumnByFieldName(fieldDef.getName());
 			if (column == null) {
 				continue;
@@ -398,6 +443,15 @@ public class TableDestination extends Destination {
 			if (column.getSize() == null) {
 				column.setSize(getColumnSize(fieldDef.getType()));
 			}
+		}
+		short keySequence = 1;
+		for (String fieldName : spaceDef.getKeyDef().getFieldNames()) {
+			Column column = getColumnByFieldName(fieldName);
+			if (column == null) {
+				continue;
+			}
+			column.setKeySequence(keySequence);
+			keySequence++;
 		}
 	}
 
@@ -417,27 +471,27 @@ public class TableDestination extends Destination {
 			return null;
 		}
 	}
-
-	private Integer getColumnSize(JDBCType jdbcType) {
-		switch (jdbcType) {
-		case BINARY:
-		case BLOB:
-		case LONGVARBINARY:
-		case VARBINARY:
-			return DEFAULT_BLOB_SIZE;
-		case CHAR:
-		case CLOB:
-		case LONGNVARCHAR:
-		case LONGVARCHAR:
-		case NCHAR:
-		case NCLOB:
-		case NVARCHAR:
-		case VARCHAR:
-			return DEFAULT_CLOB_SIZE;
-		default:
-			return null;
-		}
-	}
+//
+//	private Integer getColumnSize(JDBCType jdbcType) {
+//		switch (jdbcType) {
+//		case BINARY:
+//		case BLOB:
+//		case LONGVARBINARY:
+//		case VARBINARY:
+//			return DEFAULT_BLOB_SIZE;
+//		case CHAR:
+//		case CLOB:
+//		case LONGNVARCHAR:
+//		case LONGVARCHAR:
+//		case NCHAR:
+//		case NCLOB:
+//		case NVARCHAR:
+//		case VARCHAR:
+//			return DEFAULT_CLOB_SIZE;
+//		default:
+//			return null;
+//		}
+//	}
 
 	private JDBCType getColumnType(FieldType fieldType) {
 		switch (fieldType) {
@@ -499,6 +553,9 @@ public class TableDestination extends Destination {
 	}
 
 	public FieldType getFieldType(Column column) {
+		if (column.getType() == null) {
+			return null;
+		}
 		switch (column.getType()) {
 		case CHAR:
 		case CLOB:
@@ -593,120 +650,11 @@ public class TableDestination extends Destination {
 		}
 	}
 
-	@Override
-	protected Collection<FieldDef> getFieldDefs() {
-		Collection<FieldDef> fieldDefs = super.getFieldDefs();
-		if (fieldDefs.isEmpty()) {
-			for (Column column : table.getColumns()) {
-				String fieldName = getFieldName(column);
-				FieldType fieldType = getFieldType(column);
-				FieldDef fieldDef = FieldDef.create(fieldName, fieldType);
-				if (column.isNullable() != null) {
-					fieldDef.setNullable(column.isNullable());
-				}
-				fieldDefs.add(fieldDef);
-			}
-		}
-		return fieldDefs;
-	}
-
-	private DatabaseMetaData getMetaData() throws SQLException {
-		return channel.getMetaData();
-	}
-
-	public Collection<Table> getTables() throws SQLException {
-		String catalog = table.getCatalog();
-		String schema = table.getSchema();
-		String name = getTableName(table);
-		String[] types = new String[] { getTableType(table).name() };
-		log.log(Level.FINE,
-				"Retrieving table descriptions matching catalog={0} schema={1} name={2} types={3}",
-				new Object[] { catalog, schema, name, types });
-		ResultSet rs = getMetaData().getTables(catalog, schema, name, types);
-		Collection<Table> tables = new ArrayList<Table>();
-		try {
-			while (rs.next()) {
-				Table t = new Table();
-				t.setCountSQL(table.getCountSQL());
-				t.setFetchSize(table.getFetchSize());
-				t.setInsertSQL(table.getInsertSQL());
-				t.setSelectSQL(table.getSelectSQL());
-				t.setSpace(table.getSpace());
-				t.setCatalog(rs.getString(TABLE_CAT));
-				t.setName(rs.getString(TABLE_NAME));
-				t.setSchema(rs.getString(TABLE_SCHEM));
-				t.setType(TableType.valueOf(rs.getString(TABLE_TYPE)));
-				Map<Integer, Column> map = new TreeMap<Integer, Column>();
-				for (Column column : getColumns(table)) {
-					ResultSet columnRS = getMetaData().getColumns(
-							t.getCatalog(), t.getSchema(), getTableName(t),
-							getColumnName(column));
-					try {
-						while (columnRS.next()) {
-							Column c = new Column();
-							c.setName(columnRS.getString(COLUMN_NAME));
-							c.setField(column.getField());
-							c.setDecimals(columnRS
-									.getInt(COLUMN_DECIMAL_DIGITS));
-							c.setNullable(columnRS.getBoolean(NULLABLE));
-							c.setRadix(columnRS.getInt(COLUMN_NUM_PREC_RADIX));
-							c.setSize(columnRS.getInt(COLUMN_SIZE));
-							c.setType(JDBCType.valueOf(columnRS
-									.getInt(COLUMN_DATA_TYPE)));
-							map.put(columnRS.getInt(COLUMN_ORDINAL_POSITION), c);
-						}
-					} finally {
-						columnRS.close();
-					}
-				}
-				t.getColumns().addAll(map.values());
-				ResultSet keyRS = getMetaData().getPrimaryKeys(t.getCatalog(),
-						t.getSchema(), t.getName());
-				try {
-					while (keyRS.next()) {
-						String columnName = keyRS.getString(COLUMN_NAME);
-						Column column = getColumn(t, columnName);
-						if (column == null) {
-							continue;
-						}
-						column.setKeySequence(keyRS.getShort(KEY_SEQ));
-					}
-				} finally {
-					keyRS.close();
-				}
-				tables.add(t);
-			}
-		} finally {
-			rs.close();
-		}
-		return tables;
-	}
-
 	private String getTableName(Table table) {
 		if (table.getName() == null) {
 			return table.getSpace();
 		}
 		return table.getName();
-	}
-
-	private Collection<Column> getColumns(Table table) {
-		if (table.getColumns().isEmpty()) {
-			return Arrays.asList(new Column());
-		}
-		return table.getColumns();
-	}
-
-	private TableType getTableType(Table table) {
-		if (table.getType() == null) {
-			return TableType.TABLE;
-		}
-		return table.getType();
-	}
-
-	@Override
-	public void setSpaceName(String spaceName) {
-		table.setSpace(spaceName);
-		super.setSpaceName(spaceName);
 	}
 
 }

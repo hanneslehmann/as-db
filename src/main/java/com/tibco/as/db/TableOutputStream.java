@@ -8,7 +8,7 @@ import java.util.logging.Logger;
 
 import com.tibco.as.io.AbstractOutputStream;
 import com.tibco.as.io.IOutputStream;
-import com.tibco.as.log.LogFactory;
+import com.tibco.as.util.log.LogFactory;
 
 public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 		IOutputStream {
@@ -25,14 +25,15 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 
 	@Override
 	public void open() throws Exception {
-		Collection<Table> tables = destination.getTables();
+		Table table = destination.getTable();
+		DatabaseChannel channel = destination.getChannel();
+		Collection<Table> tables = channel.getTables(table.getCatalog(),
+				table.getSchema(), table.getName(), table.getType());
 		if (tables.isEmpty()) {
 			// create table
 			destination.execute(destination.getCreateSQL());
 		} else {
-			for (Table table : tables) {
-				TableDestination.copy(table, destination.getTable());
-			}
+			destination.setColumns();
 		}
 		String sql = destination.getInsertSQL();
 		log.log(Level.FINE, "Preparing statement: {0}", sql);

@@ -1,6 +1,6 @@
 package com.tibco.as.db;
 
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,10 +21,14 @@ import java.util.logging.Logger;
 import javax.xml.bind.JAXB;
 
 import com.tibco.as.io.Channel;
-import com.tibco.as.io.Destination;
-import com.tibco.as.log.LogFactory;
+import com.tibco.as.util.log.LogFactory;
 
 public class DatabaseChannel extends Channel {
+
+	private static final String TABLE_NAME = "TABLE_NAME";
+	private static final String TABLE_CAT = "TABLE_CAT";
+	private static final String TABLE_SCHEM = "TABLE_SCHEM";
+	private static final String TABLE_TYPE = "TABLE_TYPE";
 
 	private Logger log = LogFactory.getLog(DatabaseChannel.class);
 	private String configPath;
@@ -112,10 +117,13 @@ public class DatabaseChannel extends Channel {
 		if (configPath == null) {
 			return;
 		}
-		FileInputStream in = new FileInputStream(configPath);
-		Database database = JAXB.unmarshal(in, Database.class);
+		File configFile = new File(configPath);
+		if (!configFile.exists()) {
+			return;
+		}
+		Database database = JAXB.unmarshal(configFile, Database.class);
 		for (Table table : database.getTables()) {
-			addDestination(new TableDestination(this, table));
+			getDestinations().add(new TableDestination(this, table));
 		}
 	}
 
@@ -151,28 +159,42 @@ public class DatabaseChannel extends Channel {
 		return connection.getMetaData();
 	}
 
-	@Override
-	public TableDestination newDestination() {
-		return new TableDestination(this, new Table());
-	}
-
-	@Override
-	protected Collection<Destination> getImportDestinations(
-			Destination destination) throws SQLException {
-		TableDestination tableDestination = (TableDestination) destination;
-		Collection<Destination> destinations = new ArrayList<Destination>();
-		for (Table table : tableDestination.getTables()) {
-			destinations.add(new TableDestination(this, table));
-		}
-		return destinations;
-	}
-
 	public void setTableNames(Collection<String> tableNames) {
 		for (String tableName : tableNames) {
 			Table table = new Table();
 			table.setName(tableName);
-			addDestination(new TableDestination(this, table));
+			getDestinations().add(new TableDestination(this, table));
 		}
+	}
+
+	public Collection<Table> getTables(String catalog, String schema,
+			String name, TableType type) throws SQLException {
+		String[] types = new String[] { getTableType(type).name() };
+		log.log(Level.FINE,
+				"Retrieving table descriptions matching catalog={0} schema={1} name={2} types={3}",
+				new Object[] { catalog, schema, name, types });
+		ResultSet rs = getMetaData().getTables(catalog, schema, name, types);
+		Collection<Table> tables = new ArrayList<Table>();
+		try {
+			while (rs.next()) {
+				Table table = new Table();
+				table.setCatalog(rs.getString(TABLE_CAT));
+				table.setName(rs.getString(TABLE_NAME));
+				table.setSchema(rs.getString(TABLE_SCHEM));
+				table.setType(TableType.valueOf(rs.getString(TABLE_TYPE)));
+				tables.add(table);
+			}
+		} finally {
+			rs.close();
+		}
+		return tables;
+	}
+
+	private TableType getTableType(TableType type) {
+		if (type == null) {
+			return TableType.TABLE;
+		}
+		return type;
 	}
 
 }
