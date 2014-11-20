@@ -15,6 +15,8 @@ public class DatabaseExportCommand extends ExportCommand {
 	private String schema;
 	@Parameter(names = { "-table" }, description = "Table name")
 	private String tableName;
+	@Parameter(names = { "-insert_sql" }, description = "Insert SQL statement")
+	private String insertSQL;
 
 	@Override
 	protected Destination createDestination(IChannel channel) {
@@ -22,6 +24,9 @@ public class DatabaseExportCommand extends ExportCommand {
 		table.setCatalog(catalog);
 		table.setSchema(schema);
 		table.setName(tableName);
+		if (insertSQL != null) {
+			table.setInsertSQL(insertSQL);
+		}
 		return new TableDestination((DatabaseChannel) channel, table);
 	}
 

@@ -24,8 +24,6 @@ public class DatabaseImportCommand extends ImportCommand {
 	private String selectSQL;
 	@Parameter(names = { "-count_sql" }, description = "Select count query")
 	private String countSQL;
-	@Parameter(names = { "-insert_sql" }, description = "Insert SQL statement")
-	private String insertSQL;
 	@Parameter(names = { "-type" }, description = "Table type", converter = TableTypeConverter.class, validateWith = TableTypeConverter.class)
 	private TableType type;
 	@Parameter(description = "The list of tables to import")
@@ -34,27 +32,12 @@ public class DatabaseImportCommand extends ImportCommand {
 	@Override
 	protected Destination createDestination(IChannel channel) {
 		Table table = new Table();
-		if (catalog != null) {
-			table.setCatalog(catalog);
-		}
-		if (schema != null) {
-			table.setSchema(schema);
-		}
-		if (fetchSize != null) {
-			table.setFetchSize(fetchSize);
-		}
-		if (selectSQL != null) {
-			table.setSelectSQL(selectSQL);
-		}
-		if (countSQL != null) {
-			table.setCountSQL(countSQL);
-		}
-		if (insertSQL != null) {
-			table.setInsertSQL(insertSQL);
-		}
-		if (type != null) {
-			table.setType(type);
-		}
+		table.setCatalog(catalog);
+		table.setSchema(schema);
+		table.setFetchSize(fetchSize);
+		table.setSelectSQL(selectSQL);
+		table.setCountSQL(countSQL);
+		table.setType(type);
 		return new TableDestination((DatabaseChannel) channel, table);
 	}
 
