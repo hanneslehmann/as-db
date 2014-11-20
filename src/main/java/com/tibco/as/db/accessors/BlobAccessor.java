@@ -1,11 +1,13 @@
-package com.tibco.as.db;
+package com.tibco.as.db.accessors;
 
 import java.sql.Blob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class BlobAccessor implements IPreparedStatementAccessor {
+import com.tibco.as.db.IColumnAccessor;
+
+public class BlobAccessor implements IColumnAccessor {
 
 	private int index;
 

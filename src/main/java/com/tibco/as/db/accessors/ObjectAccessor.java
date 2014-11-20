@@ -1,15 +1,17 @@
-package com.tibco.as.db;
+package com.tibco.as.db.accessors;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class DefaultAccessor implements IPreparedStatementAccessor {
+import com.tibco.as.db.IColumnAccessor;
+
+public class ObjectAccessor implements IColumnAccessor {
 
 	private int index;
 	private int sqlType;
 
-	public DefaultAccessor(int index, int sqlType) {
+	public ObjectAccessor(int index, int sqlType) {
 		this.index = index;
 		this.sqlType = sqlType;
 	}

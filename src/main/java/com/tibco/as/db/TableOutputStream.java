@@ -16,7 +16,7 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 	private Logger log = LogFactory.getLog(TableOutputStream.class);
 	private TableDestination destination;
 	private PreparedStatement statement;
-	private IPreparedStatementAccessor[] accessors;
+	private IColumnAccessor[] accessors;
 
 	public TableOutputStream(TableDestination destination) {
 		super(destination);
@@ -38,7 +38,7 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 		String sql = destination.getInsertSQL();
 		log.log(Level.FINE, "Preparing statement: {0}", sql);
 		statement = destination.prepareStatement(sql);
-		accessors = destination.getAccessors();
+		accessors = destination.getColumnAccessors();
 		super.open();
 	}
 

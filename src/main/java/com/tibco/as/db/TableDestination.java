@@ -19,6 +19,12 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.tibco.as.db.accessors.BlobAccessor;
+import com.tibco.as.db.accessors.ClobAccessor;
+import com.tibco.as.db.accessors.DateAccessor;
+import com.tibco.as.db.accessors.ObjectAccessor;
+import com.tibco.as.db.accessors.TimeAccessor;
+import com.tibco.as.db.accessors.TimestampAccessor;
 import com.tibco.as.io.Destination;
 import com.tibco.as.io.IInputStream;
 import com.tibco.as.space.FieldDef;
@@ -471,27 +477,28 @@ public class TableDestination extends Destination {
 			return null;
 		}
 	}
-//
-//	private Integer getColumnSize(JDBCType jdbcType) {
-//		switch (jdbcType) {
-//		case BINARY:
-//		case BLOB:
-//		case LONGVARBINARY:
-//		case VARBINARY:
-//			return DEFAULT_BLOB_SIZE;
-//		case CHAR:
-//		case CLOB:
-//		case LONGNVARCHAR:
-//		case LONGVARCHAR:
-//		case NCHAR:
-//		case NCLOB:
-//		case NVARCHAR:
-//		case VARCHAR:
-//			return DEFAULT_CLOB_SIZE;
-//		default:
-//			return null;
-//		}
-//	}
+
+	//
+	// private Integer getColumnSize(JDBCType jdbcType) {
+	// switch (jdbcType) {
+	// case BINARY:
+	// case BLOB:
+	// case LONGVARBINARY:
+	// case VARBINARY:
+	// return DEFAULT_BLOB_SIZE;
+	// case CHAR:
+	// case CLOB:
+	// case LONGNVARCHAR:
+	// case LONGVARCHAR:
+	// case NCHAR:
+	// case NCLOB:
+	// case NVARCHAR:
+	// case VARCHAR:
+	// return DEFAULT_CLOB_SIZE;
+	// default:
+	// return null;
+	// }
+	// }
 
 	private JDBCType getColumnType(FieldType fieldType) {
 		switch (fieldType) {
@@ -533,22 +540,30 @@ public class TableDestination extends Destination {
 		return channel.getConnection().prepareStatement(sql);
 	}
 
-	public IPreparedStatementAccessor[] getAccessors() {
-		Collection<IPreparedStatementAccessor> result = new ArrayList<IPreparedStatementAccessor>();
+	public IColumnAccessor[] getColumnAccessors() {
+		Collection<IColumnAccessor> result = new ArrayList<IColumnAccessor>();
 		int index = 1;
 		for (Column column : table.getColumns()) {
 			result.add(getAccessor(index, column.getType()));
 			index++;
 		}
-		return result.toArray(new IPreparedStatementAccessor[result.size()]);
+		return result.toArray(new IColumnAccessor[result.size()]);
 	}
 
-	private IPreparedStatementAccessor getAccessor(int index, JDBCType type) {
+	private IColumnAccessor getAccessor(int index, JDBCType type) {
 		switch (type) {
 		case BLOB:
 			return new BlobAccessor(index);
+		case CLOB:
+			return new ClobAccessor(index);
+		case DATE:
+			return new DateAccessor(index);
+		case TIME:
+			return new TimeAccessor(index);
+		case TIMESTAMP:
+			return new TimestampAccessor(index);
 		default:
-			return new DefaultAccessor(index, type.getType());
+			return new ObjectAccessor(index, type.getType());
 		}
 	}
 
@@ -569,7 +584,10 @@ public class TableDestination extends Destination {
 			return FieldType.STRING;
 		case NUMERIC:
 		case DECIMAL:
-			return FieldType.DOUBLE;
+			if (column.getDecimals() == null || column.getDecimals() > 0) {
+				return FieldType.DOUBLE;
+			}
+			return FieldType.LONG;
 		case BIT:
 		case BOOLEAN:
 			return FieldType.BOOLEAN;

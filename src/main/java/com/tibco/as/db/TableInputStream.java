@@ -10,7 +10,7 @@ public class TableInputStream implements IInputStream {
 
 	private TableDestination destination;
 	private ResultSet resultSet;
-	private IPreparedStatementAccessor[] accessors;
+	private IColumnAccessor[] accessors;
 	private Long position;
 	private Long count;
 
@@ -42,7 +42,7 @@ public class TableInputStream implements IInputStream {
 			column.setNullable(nullable);
 			column.setType(JDBCType.valueOf(dataType));
 		}
-		accessors = destination.getAccessors();
+		accessors = destination.getColumnAccessors();
 		count = getCount();
 		position = 0L;
 	}

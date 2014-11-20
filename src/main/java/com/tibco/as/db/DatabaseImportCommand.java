@@ -3,6 +3,7 @@ package com.tibco.as.db;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Logger;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -10,9 +11,12 @@ import com.tibco.as.io.ChannelTransfer;
 import com.tibco.as.io.Destination;
 import com.tibco.as.io.IChannel;
 import com.tibco.as.io.cli.ImportCommand;
+import com.tibco.as.util.log.LogFactory;
 
 @Parameters(commandNames = "import", commandDescription = "Import tables")
 public class DatabaseImportCommand extends ImportCommand {
+
+	private Logger log = LogFactory.getLog(DatabaseImportCommand.class);
 
 	@Parameter(names = { "-catalog" }, description = "Catalog name")
 	private String catalog;
@@ -44,6 +48,11 @@ public class DatabaseImportCommand extends ImportCommand {
 	@Override
 	public ChannelTransfer getTransfer(IChannel channel) throws Exception {
 		DatabaseChannel dbChannel = (DatabaseChannel) channel;
+		if (dbChannel.getDestinations().isEmpty()) {
+			if (tableNames.isEmpty()) {
+				log.warning("No table specified");
+			}
+		}
 		for (String name : tableNames) {
 			Collection<Table> tables = dbChannel.getTables(catalog, schema,
 					name, type);
@@ -56,5 +65,4 @@ public class DatabaseImportCommand extends ImportCommand {
 		}
 		return super.getTransfer(channel);
 	}
-
 }
