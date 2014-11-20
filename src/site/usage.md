@@ -61,12 +61,16 @@ Usage: as-db [options] [command] [command options]
        Database URL
     -user
        Database user
+    -version
+       Print this application's version
     -worker_thread_count
        Number of threads that can be used for program invocation
   Commands:
     import      Import tables
       Usage: import [options] The list of tables to import
         Options:
+          -batch_size
+             Transfer output batch size
           -catalog
              Catalog name
           -count_sql
@@ -75,12 +79,10 @@ Usage: as-db [options] [command] [command options]
              Distribution role (none, leech, seeder)
           -fetch_size
              Fetch size
-          -insert_sql
-             Insert SQL statement
+          -fields
+             Names of specific fields to transfer, e.g. field1 field2
           -limit
              Max number of entries to read from input
-          -no_transfer
-             Only initialize input and output without data transfer
           -operation
              Space operation (get, load, none, partial, put, take)
           -schema
@@ -89,32 +91,32 @@ Usage: as-db [options] [command] [command options]
              Select query
           -space
              Space name
-          -space_batch_size
-             Batch size for space operations
+          -transfer_thread_count
+             Number of worker threads to use for transfer
           -type
              Table type
           -wait_for_ready_timeout
              Wait for ready timeout
-          -writer_thread_count
-             Number of writer threads
 
     export      Export tables
       Usage: export [options] The list of spaces to export
         Options:
+          -batch_size
+             Transfer output batch size
           -browser_type
              Browser type
           -catalog
              Catalog name
           -distribution_scope
              Browser distribution scope
+          -fields
+             Names of specific fields to transfer, e.g. field1 field2
           -filter
              Browser filter
-          -insert_batch_size
-             Number of records to include in batch inserts
+          -insert_sql
+             Insert SQL statement
           -limit
              Max number of entries to read from input
-          -no_transfer
-             Only initialize input and output without data transfer
           -prefetch
              Browser prefetch
           -query_limit
@@ -127,6 +129,6 @@ Usage: as-db [options] [command] [command options]
              Browser time scope
           -timeout
              Browser timeout
-          -writer_thread_count
-             Number of writer threads
+          -transfer_thread_count
+             Number of worker threads to use for transfer
 ~~~
