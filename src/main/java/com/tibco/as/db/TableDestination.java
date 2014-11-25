@@ -110,68 +110,6 @@ public class TableDestination extends Destination {
 		// return positionMap.values();
 	}
 
-	public void copy(Table source) {
-		if (table.getCatalog() == null) {
-			table.setCatalog(source.getCatalog());
-		}
-		if (table.getCountSQL() == null) {
-			table.setCountSQL(source.getCountSQL());
-		}
-		if (table.getInsertSQL() == null) {
-			table.setInsertSQL(source.getInsertSQL());
-		}
-		if (table.getName() == null) {
-			table.setName(source.getName());
-		}
-		if (table.getSchema() == null) {
-			table.setSchema(source.getSchema());
-		}
-		if (table.getSelectSQL() == null) {
-			table.setSelectSQL(source.getSelectSQL());
-		}
-		if (table.getSpace() == null) {
-			table.setSpace(source.getSpace());
-		}
-		if (table.getType() == null) {
-			table.setType(source.getType());
-		}
-		for (Column sourceColumn : source.getColumns()) {
-			Column targetColumn = getColumn(table, getColumnName(sourceColumn));
-			if (targetColumn == null) {
-				targetColumn = new Column();
-				table.getColumns().add(targetColumn);
-			}
-			copy(sourceColumn, targetColumn);
-		}
-	}
-
-	private void copy(Column source, Column target) {
-		if (target.getDecimals() == null) {
-			target.setDecimals(source.getDecimals());
-		}
-		if (target.getField() == null) {
-			target.setField(source.getField());
-		}
-		if (target.getKeySequence() == null) {
-			target.setKeySequence(source.getKeySequence());
-		}
-		if (target.getName() == null) {
-			target.setName(source.getName());
-		}
-		if (target.isNullable() == null) {
-			target.setNullable(source.isNullable());
-		}
-		if (target.getRadix() == null) {
-			target.setRadix(source.getRadix());
-		}
-		if (target.getSize() == null) {
-			target.setSize(source.getSize());
-		}
-		if (target.getType() == null) {
-			target.setType(source.getType());
-		}
-	}
-
 	@Override
 	public DatabaseChannel getChannel() {
 		return channel;
@@ -426,13 +364,13 @@ public class TableDestination extends Destination {
 			table.setSpace(spaceDef.getName());
 		}
 		if (table.getColumns().isEmpty()) {
-			for (FieldDef fieldDef : getSpaceDef().getFieldDefs()) {
+			for (FieldDef fieldDef : spaceDef.getFieldDefs()) {
 				Column column = new Column();
 				column.setField(fieldDef.getName());
 				table.getColumns().add(column);
 			}
 		}
-		for (FieldDef fieldDef : getSpaceDef().getFieldDefs()) {
+		for (FieldDef fieldDef : spaceDef.getFieldDefs()) {
 			Column column = getColumnByFieldName(fieldDef.getName());
 			if (column == null) {
 				continue;

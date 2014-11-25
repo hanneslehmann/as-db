@@ -35,8 +35,8 @@ public class DatabaseApplication extends Application {
 	}
 
 	@Override
-	protected DatabaseChannel getChannel(String metaspaceName) {
-		DatabaseChannel channel = new DatabaseChannel(metaspaceName);
+	protected DatabaseChannel getChannel() {
+		DatabaseChannel channel = new DatabaseChannel();
 		channel.setConfigPath(config);
 		channel.setDriver(driver);
 		channel.setJar(jar);

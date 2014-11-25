@@ -39,10 +39,6 @@ public class DatabaseChannel extends Channel {
 	private String password;
 	private Connection connection;
 
-	public DatabaseChannel(String metaspaceName) {
-		super(metaspaceName);
-	}
-
 	public String getConfigPath() {
 		return configPath;
 	}
@@ -93,23 +89,25 @@ public class DatabaseChannel extends Channel {
 
 	@Override
 	public void open() throws Exception {
-		loadConfig();
-		log.info("Connecting to database");
-		Properties props = new Properties();
-		if (user != null) {
-			props.put("user", user);
+		if (connection == null) {
+			loadConfig();
+			log.info("Connecting to database");
+			Properties props = new Properties();
+			if (user != null) {
+				props.put("user", user);
+			}
+			if (password != null) {
+				props.put("password", password);
+			}
+			if (driver == null) {
+				connection = DriverManager.getConnection(url, props);
+			} else {
+				Driver driver = getDriverClass().newInstance();
+				connection = driver.connect(url, props);
+			}
+			log.finest("Setting the connection's commit mode to auto");
+			connection.setAutoCommit(true);
 		}
-		if (password != null) {
-			props.put("password", password);
-		}
-		if (driver == null) {
-			connection = DriverManager.getConnection(url, props);
-		} else {
-			Driver driver = getDriverClass().newInstance();
-			connection = driver.connect(url, props);
-		}
-		log.finest("Setting the connection's commit mode to auto");
-		connection.setAutoCommit(true);
 		super.open();
 	}
 
