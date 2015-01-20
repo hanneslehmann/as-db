@@ -15,7 +15,7 @@ import com.tibco.as.space.SpaceDef;
 import com.tibco.as.space.Tuple;
 import com.tibco.as.space.browser.Browser;
 import com.tibco.as.space.browser.BrowserDef.BrowserType;
-import com.tibco.as.util.Utils;
+import com.tibco.as.util.file.FileUtils;
 
 public class TestImport extends TestBase {
 
@@ -135,7 +135,7 @@ public class TestImport extends TestBase {
 		}
 		getConnection().commit();
 		preparedStatement.close();
-		File file = Utils.copy("db.xml", Utils.createTempDirectory());
+		File file = FileUtils.copy("db.xml", FileUtils.createTempDirectory());
 		execute("-config "
 				+ file.getAbsolutePath()
 				+ " -discovery tcp -driver org.h2.Driver -url jdbc:h2:mem:test import -distribution_role seeder");

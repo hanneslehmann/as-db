@@ -1,4 +1,4 @@
-package com.tibco.as.db;
+package com.tibco.as.db.accessors;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

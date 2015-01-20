@@ -1,7 +1,6 @@
 package com.tibco.as.db;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -20,10 +19,10 @@ import java.util.logging.Logger;
 
 import javax.xml.bind.JAXB;
 
-import com.tibco.as.io.Channel;
+import com.tibco.as.io.AbstractChannel;
 import com.tibco.as.util.log.LogFactory;
 
-public class DatabaseChannel extends Channel {
+public class DatabaseChannel extends AbstractChannel {
 
 	private static final String TABLE_NAME = "TABLE_NAME";
 	private static final String TABLE_CAT = "TABLE_CAT";
@@ -38,6 +37,11 @@ public class DatabaseChannel extends Channel {
 	private String user;
 	private String password;
 	private Connection connection;
+
+	@Override
+	protected TableDestination newDestination() {
+		return new TableDestination(this);
+	}
 
 	public String getConfigPath() {
 		return configPath;
@@ -111,7 +115,7 @@ public class DatabaseChannel extends Channel {
 		super.open();
 	}
 
-	private void loadConfig() throws FileNotFoundException {
+	private void loadConfig() {
 		if (configPath == null) {
 			return;
 		}
@@ -121,7 +125,7 @@ public class DatabaseChannel extends Channel {
 		}
 		Database database = JAXB.unmarshal(configFile, Database.class);
 		for (Table table : database.getTables()) {
-			getDestinations().add(new TableDestination(this, table));
+			addDestination().setTable(table);
 		}
 	}
 
@@ -159,9 +163,7 @@ public class DatabaseChannel extends Channel {
 
 	public void setTableNames(Collection<String> tableNames) {
 		for (String tableName : tableNames) {
-			Table table = new Table();
-			table.setName(tableName);
-			getDestinations().add(new TableDestination(this, table));
+			addDestination().getTable().setName(tableName);
 		}
 	}
 
@@ -193,6 +195,11 @@ public class DatabaseChannel extends Channel {
 			return TableType.TABLE;
 		}
 		return type;
+	}
+
+	@Override
+	public TableDestination addDestination() {
+		return (TableDestination) super.addDestination();
 	}
 
 }

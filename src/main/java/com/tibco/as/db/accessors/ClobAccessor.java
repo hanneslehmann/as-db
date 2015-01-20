@@ -5,8 +5,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.tibco.as.db.IColumnAccessor;
-
 public class ClobAccessor implements IColumnAccessor {
 
 	private int index;

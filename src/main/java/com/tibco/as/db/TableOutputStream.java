@@ -3,15 +3,15 @@ package com.tibco.as.db;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.tibco.as.io.AbstractOutputStream;
+import com.tibco.as.db.accessors.IColumnAccessor;
 import com.tibco.as.io.IOutputStream;
 import com.tibco.as.util.log.LogFactory;
 
-public class TableOutputStream extends AbstractOutputStream<Object[]> implements
-		IOutputStream {
+public class TableOutputStream implements IOutputStream<Object[]> {
 
 	private Logger log = LogFactory.getLog(TableOutputStream.class);
 	private TableDestination destination;
@@ -19,12 +19,11 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 	private IColumnAccessor[] accessors;
 
 	public TableOutputStream(TableDestination destination) {
-		super(destination);
 		this.destination = destination;
 	}
 
 	@Override
-	public void open() throws Exception {
+	public synchronized void open() throws Exception {
 		Table table = destination.getTable();
 		DatabaseChannel channel = destination.getChannel();
 		Collection<Table> tables = channel.getTables(table.getCatalog(),
@@ -39,38 +38,40 @@ public class TableOutputStream extends AbstractOutputStream<Object[]> implements
 		log.log(Level.FINE, "Preparing statement: {0}", sql);
 		statement = destination.prepareStatement(sql);
 		accessors = destination.getColumnAccessors();
-		super.open();
 	}
 
 	@Override
-	public void close() throws Exception {
-		super.close();
+	public synchronized void close() throws Exception {
 		close(statement);
+	}
+
+	@Override
+	public void write(Object[] array) throws Exception {
+		set(array);
+		statement.execute();
+	}
+
+	private void set(Object[] array) throws SQLException {
+		for (int index = 0; index < accessors.length; index++) {
+			accessors[index].set(statement, array[index]);
+		}
 	}
 
 	protected void close(PreparedStatement statement) throws SQLException {
 		statement.close();
 	}
 
-	protected void execute(PreparedStatement statement) throws SQLException {
-		statement.execute();
-	}
-
 	@Override
-	protected void doWrite(Object[] array) throws Exception {
-		set(array);
-		execute(statement);
-	}
-
-	private void set(Object[] element) throws SQLException {
-		for (int index = 0; index < element.length; index++) {
-			accessors[index].set(statement, element[index]);
+	public void write(List<Object[]> arrays) throws Exception {
+		for (Object[] array : arrays) {
+			set(array);
+			statement.addBatch();
 		}
+		statement.executeBatch();
 	}
 
 	@Override
-	protected Object[] newObject(int length) {
-		return new Object[length];
+	public Object[] newObject() {
+		return new Object[accessors.length];
 	}
-
 }

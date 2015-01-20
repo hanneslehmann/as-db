@@ -5,8 +5,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
-import com.tibco.as.db.IColumnAccessor;
-
 public class TimestampAccessor implements IColumnAccessor {
 
 	private int index;

@@ -10,7 +10,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.tibco.as.space.Space;
-import com.tibco.as.util.Utils;
+import com.tibco.as.util.file.FileUtils;
 
 public class TestExport extends TestBase {
 
@@ -59,7 +59,7 @@ public class TestExport extends TestBase {
 
 	@Test
 	public void testConfigFile() throws Exception {
-		File file = Utils.copy("db.xml", Utils.createTempDirectory());
+		File file = FileUtils.copy("db.xml", FileUtils.createTempDirectory());
 		Space space = createSpace();
 		execute("-config "
 				+ file.getAbsolutePath()

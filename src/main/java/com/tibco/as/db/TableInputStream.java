@@ -4,15 +4,16 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
+import com.tibco.as.db.accessors.IColumnAccessor;
 import com.tibco.as.io.IInputStream;
 
-public class TableInputStream implements IInputStream {
+public class TableInputStream implements IInputStream<Object[]> {
 
 	private TableDestination destination;
 	private ResultSet resultSet;
-	private IColumnAccessor[] accessors;
-	private Long position;
+	private long position;
 	private Long count;
+	private IColumnAccessor[] accessors;
 
 	public TableInputStream(TableDestination destination) {
 		this.destination = destination;
@@ -71,18 +72,18 @@ public class TableInputStream implements IInputStream {
 	@Override
 	public Object[] read() throws SQLException {
 		if (resultSet.next()) {
-			Object[] result = new Object[accessors.length];
+			Object[] array = new Object[accessors.length];
 			for (int index = 0; index < accessors.length; index++) {
-				result[index] = accessors[index].get(resultSet);
+				array[index] = accessors[index].get(resultSet);
 			}
 			position++;
-			return result;
+			return array;
 		}
 		return null;
 	}
 
 	@Override
-	public Long getPosition() {
+	public long getPosition() {
 		return position;
 	}
 
@@ -95,8 +96,8 @@ public class TableInputStream implements IInputStream {
 	}
 
 	@Override
-	public long getOpenTime() {
-		return 0;
+	public String getName() {
+		return destination.getTableName();
 	}
 
 }

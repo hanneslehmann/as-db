@@ -22,17 +22,21 @@ import java.util.logging.Logger;
 import com.tibco.as.db.accessors.BlobAccessor;
 import com.tibco.as.db.accessors.ClobAccessor;
 import com.tibco.as.db.accessors.DateAccessor;
+import com.tibco.as.db.accessors.IColumnAccessor;
 import com.tibco.as.db.accessors.ObjectAccessor;
 import com.tibco.as.db.accessors.TimeAccessor;
 import com.tibco.as.db.accessors.TimestampAccessor;
-import com.tibco.as.io.Destination;
-import com.tibco.as.io.IInputStream;
+import com.tibco.as.io.AbstractDestination;
+import com.tibco.as.io.IStreamAdapter;
 import com.tibco.as.space.FieldDef;
 import com.tibco.as.space.FieldDef.FieldType;
 import com.tibco.as.space.SpaceDef;
+import com.tibco.as.space.Tuple;
+import com.tibco.as.util.convert.ConverterFactory;
+import com.tibco.as.util.convert.IConverter;
 import com.tibco.as.util.log.LogFactory;
 
-public class TableDestination extends Destination {
+public class TableDestination extends AbstractDestination<Object[]> {
 
 	private static final String SELECT = "SELECT {0} FROM {1}";
 	private final static char QUOTE = '\"';
@@ -52,12 +56,15 @@ public class TableDestination extends Destination {
 
 	private Logger log = LogFactory.getLog(TableDestination.class);
 	private DatabaseChannel channel;
-	private Table table;
+	private Table table = new Table();
 
-	public TableDestination(DatabaseChannel channel, Table table) {
+	public TableDestination(DatabaseChannel channel) {
 		super(channel);
 		this.channel = channel;
-		this.table = table;
+	}
+
+	public Table getTable() {
+		return table;
 	}
 
 	public void setTable(Table table) {
@@ -236,10 +243,6 @@ public class TableDestination extends Destination {
 		return table.getInsertSQL();
 	}
 
-	public Table getTable() {
-		return table;
-	}
-
 	public String getTableName() {
 		return getTableName(table);
 	}
@@ -278,22 +281,13 @@ public class TableDestination extends Destination {
 	}
 
 	@Override
-	public TableOutputStream getOutputStream() {
-		Integer batchSize = getExportConfig().getBatchSize();
-		if (batchSize == null || batchSize == 1) {
-			return new TableOutputStream(this);
-		}
-		return new BatchTableOutputStream(this, batchSize);
+	protected TableOutputStream getOutputStream() {
+		return new TableOutputStream(this);
 	}
 
 	@Override
-	public IInputStream getInputStream() {
+	public TableInputStream getInputStream() {
 		return new TableInputStream(this);
-	}
-
-	@Override
-	public String getName() {
-		return getTableName();
 	}
 
 	private String getCommaSeparated(String[] elements) {
@@ -318,7 +312,7 @@ public class TableDestination extends Destination {
 		}
 	}
 
-	public String getCreateSQL() throws SQLException {
+	public String getCreateSQL() {
 		String query = "";
 		query += "CREATE TABLE " + getFullyQualifiedName() + " (";
 		for (Column column : table.getColumns()) {
@@ -363,29 +357,30 @@ public class TableDestination extends Destination {
 		if (table.getSpace() == null) {
 			table.setSpace(spaceDef.getName());
 		}
+		int size = spaceDef.getFieldDefs().size();
 		if (table.getColumns().isEmpty()) {
-			for (FieldDef fieldDef : spaceDef.getFieldDefs()) {
-				Column column = new Column();
-				column.setField(fieldDef.getName());
-				table.getColumns().add(column);
+			for (int index = 0; index < size; index++) {
+				table.getColumns().add(new Column());
 			}
 		}
-		for (FieldDef fieldDef : spaceDef.getFieldDefs()) {
-			Column column = getColumnByFieldName(fieldDef.getName());
-			if (column == null) {
-				continue;
-			}
+		FieldDef[] fieldDefs = spaceDef.getFieldDefs().toArray(
+				new FieldDef[size]);
+		for (int index = 0; index < table.getColumns().size(); index++) {
+			Column column = table.getColumns().get(index);
 			if (column.getField() == null) {
-				column.setField(fieldDef.getName());
+				column.setField(fieldDefs[index].getName());
 			}
-			if (column.getType() == null) {
-				column.setType(getColumnType(fieldDef.getType()));
-			}
-			if (column.isNullable() == null) {
-				column.setNullable(fieldDef.isNullable());
-			}
-			if (column.getSize() == null) {
-				column.setSize(getColumnSize(fieldDef.getType()));
+			FieldDef fieldDef = spaceDef.getFieldDef(column.getField());
+			if (fieldDef != null) {
+				if (column.getType() == null) {
+					column.setType(getColumnType(fieldDef.getType()));
+				}
+				if (column.isNullable() == null) {
+					column.setNullable(fieldDef.isNullable());
+				}
+				if (column.getSize() == null) {
+					column.setSize(getColumnSize(fieldDef.getType()));
+				}
 			}
 		}
 		short keySequence = 1;
@@ -480,10 +475,9 @@ public class TableDestination extends Destination {
 
 	public IColumnAccessor[] getColumnAccessors() {
 		Collection<IColumnAccessor> result = new ArrayList<IColumnAccessor>();
-		int index = 1;
-		for (Column column : table.getColumns()) {
-			result.add(getAccessor(index, column.getType()));
-			index++;
+		for (int index = 0; index < table.getColumns().size(); index++) {
+			Column column = table.getColumns().get(index);
+			result.add(getAccessor(index + 1, column.getType()));
 		}
 		return result.toArray(new IColumnAccessor[result.size()]);
 	}
@@ -555,16 +549,17 @@ public class TableDestination extends Destination {
 	}
 
 	@Override
-	protected Class<?> getJavaType(FieldDef fieldDef) {
-		Column column = getColumnByFieldName(fieldDef.getName());
-		if (column == null || column.getType() == null) {
-			return getJavaType(getColumnType(fieldDef.getType()));
-		}
-		return getJavaType(column.getType());
+	protected ObjectArrayStreamAdapter getInputStreamAdapter() {
+		return new ObjectArrayStreamAdapter(this);
 	}
 
-	public Class<?> getJavaType(JDBCType jdbcType) {
-		switch (jdbcType) {
+	@Override
+	protected IStreamAdapter<Tuple, Object[]> getOutputStreamAdapter() {
+		return new TupleStreamAdapter(this);
+	}
+
+	public Class<?> getJavaType(JDBCType type) {
+		switch (type) {
 		case CHAR:
 		case VARCHAR:
 		case LONGVARCHAR:
@@ -613,4 +608,31 @@ public class TableDestination extends Destination {
 		return table.getName();
 	}
 
+	public IConverter[] getInputConverters() {
+		ConverterFactory factory = getConverterFactory();
+		IConverter[] converters = new IConverter[table.getColumns().size()];
+		for (int index = 0; index < table.getColumns().size(); index++) {
+			Column column = table.getColumns().get(index);
+			FieldDef fieldDef = getSpaceDef().getFieldDef(getFieldName(column));
+			Class<?> from = getJavaType(column.getType());
+			FieldType to = fieldDef.getType();
+			IConverter converter = factory.getConverter(from, to);
+			converters[index] = converter;
+		}
+		return converters;
+	}
+
+	public IConverter[] getOutputConverters() {
+		ConverterFactory factory = getConverterFactory();
+		IConverter[] converters = new IConverter[table.getColumns().size()];
+		for (int index = 0; index < table.getColumns().size(); index++) {
+			Column column = table.getColumns().get(index);
+			FieldDef fieldDef = getSpaceDef().getFieldDef(getFieldName(column));
+			FieldType from = fieldDef.getType();
+			Class<?> to = getJavaType(column.getType());
+			IConverter converter = factory.getConverter(from, to);
+			converters[index] = converter;
+		}
+		return converters;
+	}
 }

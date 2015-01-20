@@ -11,6 +11,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.tibco.as.db.cli.DatabaseApplication;
 import com.tibco.as.space.ASException;
 import com.tibco.as.space.DateTime;
 import com.tibco.as.space.FieldDef;
@@ -119,7 +120,7 @@ public class TestBase {
 		tuple.putChar(FIELD_NAME6, getCharacter(id));
 		tuple.putDouble(FIELD_NAME7, id / 1000);
 		tuple.putFloat(FIELD_NAME8, id / 1000);
-		tuple.putInt(FIELD_NAME9, (int) id);
+		tuple.putInt(FIELD_NAME9, id);
 		tuple.putShort(FIELD_NAME10, (short) id);
 		return tuple;
 	}
@@ -149,6 +150,7 @@ public class TestBase {
 		return index % 2 == 0;
 	}
 
+	@SuppressWarnings("unused")
 	protected char getCharacter(int index) {
 		return 'c';
 	}

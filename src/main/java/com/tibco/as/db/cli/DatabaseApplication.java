@@ -1,10 +1,14 @@
-package com.tibco.as.db;
+package com.tibco.as.db.cli;
 
-import com.beust.jcommander.JCommander;
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.beust.jcommander.Parameter;
-import com.tibco.as.io.cli.Application;
+import com.tibco.as.db.DatabaseChannel;
+import com.tibco.as.io.cli.AbstractApplication;
+import com.tibco.as.io.cli.ICommand;
 
-public class DatabaseApplication extends Application {
+public class DatabaseApplication extends AbstractApplication {
 
 	@Parameter(names = { "-driver" }, description = "Database driver class name")
 	private String driver;
@@ -24,9 +28,9 @@ public class DatabaseApplication extends Application {
 	}
 
 	@Override
-	protected void addCommands(JCommander jc) {
-		jc.addCommand(new DatabaseImportCommand());
-		jc.addCommand(new DatabaseExportCommand());
+	protected Collection<ICommand> getCommands() {
+		return Arrays.asList((ICommand) new DatabaseImportCommand(),
+				new DatabaseExportCommand(), new DatabaseSNExportCommand());
 	}
 
 	@Override

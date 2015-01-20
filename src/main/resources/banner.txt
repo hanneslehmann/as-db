@@ -3,4 +3,4 @@
   / _ \ \___ \  | | | |  _ \ 
  / ___ \ ___) | | |_| | |_) |
 /_/   \_\____/  |____/|____/ 
-                Version: ${pom.version} ${timestamp}
+Version: ${pom.version} ${timestamp}
