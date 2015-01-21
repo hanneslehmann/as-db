@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -27,13 +28,11 @@ import com.tibco.as.db.accessors.ObjectAccessor;
 import com.tibco.as.db.accessors.TimeAccessor;
 import com.tibco.as.db.accessors.TimestampAccessor;
 import com.tibco.as.io.AbstractDestination;
-import com.tibco.as.io.IStreamAdapter;
+import com.tibco.as.io.ArrayInputStreamAdapter;
+import com.tibco.as.io.ArrayOutputStreamAdapter;
 import com.tibco.as.space.FieldDef;
 import com.tibco.as.space.FieldDef.FieldType;
 import com.tibco.as.space.SpaceDef;
-import com.tibco.as.space.Tuple;
-import com.tibco.as.util.convert.ConverterFactory;
-import com.tibco.as.util.convert.IConverter;
 import com.tibco.as.util.log.LogFactory;
 
 public class TableDestination extends AbstractDestination<Object[]> {
@@ -61,6 +60,19 @@ public class TableDestination extends AbstractDestination<Object[]> {
 	public TableDestination(DatabaseChannel channel) {
 		super(channel);
 		this.channel = channel;
+	}
+
+	@Override
+	public String[] getFieldNames() {
+		List<Column> columns = table.getColumns();
+		if (columns.isEmpty()) {
+			return super.getFieldNames();
+		}
+		String[] fieldNames = new String[columns.size()];
+		for (int index = 0; index < columns.size(); index++) {
+			fieldNames[index] = getFieldName(columns.get(index));
+		}
+		return fieldNames;
 	}
 
 	public Table getTable() {
@@ -92,7 +104,7 @@ public class TableDestination extends AbstractDestination<Object[]> {
 		}
 	}
 
-	public void setColumns() throws SQLException {
+	public void setColumnsFromMetaData() throws SQLException {
 		// Map<Integer, Column> positionMap = new TreeMap<Integer, Column>();
 		ResultSet columnRS = channel.getMetaData().getColumns(
 				table.getCatalog(), table.getSchema(), table.getName(), null);
@@ -247,14 +259,7 @@ public class TableDestination extends AbstractDestination<Object[]> {
 		return getTableName(table);
 	}
 
-	public TableType getType() {
-		if (table.getType() == null) {
-			return TableType.TABLE;
-		}
-		return table.getType();
-	}
-
-	public String getFullyQualifiedName() {
+	private String getFullyQualifiedName() {
 		String namespace = "";
 		if (table.getCatalog() != null) {
 			namespace += quote(table.getCatalog()) + ".";
@@ -265,11 +270,11 @@ public class TableDestination extends AbstractDestination<Object[]> {
 		return namespace + quote(getTableName());
 	}
 
-	public String quote(String name) {
+	private String quote(String name) {
 		return QUOTE + name + QUOTE;
 	}
 
-	public String[] getColumnNames() {
+	private String[] getColumnNames() {
 		if (table.getColumns().isEmpty()) {
 			return new String[] { "*" };
 		}
@@ -286,7 +291,7 @@ public class TableDestination extends AbstractDestination<Object[]> {
 	}
 
 	@Override
-	public TableInputStream getInputStream() {
+	protected TableInputStream getInputStream() {
 		return new TableInputStream(this);
 	}
 
@@ -499,7 +504,7 @@ public class TableDestination extends AbstractDestination<Object[]> {
 		}
 	}
 
-	public FieldType getFieldType(Column column) {
+	private FieldType getFieldType(Column column) {
 		if (column.getType() == null) {
 			return null;
 		}
@@ -549,16 +554,16 @@ public class TableDestination extends AbstractDestination<Object[]> {
 	}
 
 	@Override
-	protected ObjectArrayStreamAdapter getInputStreamAdapter() {
-		return new ObjectArrayStreamAdapter(this);
+	protected ArrayInputStreamAdapter<Object> getInputStreamAdapter() {
+		return new ArrayInputStreamAdapter<Object>(this);
 	}
 
 	@Override
-	protected IStreamAdapter<Tuple, Object[]> getOutputStreamAdapter() {
-		return new TupleStreamAdapter(this);
+	protected ArrayOutputStreamAdapter<Object> getOutputStreamAdapter() {
+		return new ArrayOutputStreamAdapter<Object>(this);
 	}
 
-	public Class<?> getJavaType(JDBCType type) {
+	private Class<?> getJavaType(JDBCType type) {
 		switch (type) {
 		case CHAR:
 		case VARCHAR:
@@ -608,31 +613,10 @@ public class TableDestination extends AbstractDestination<Object[]> {
 		return table.getName();
 	}
 
-	public IConverter[] getInputConverters() {
-		ConverterFactory factory = getConverterFactory();
-		IConverter[] converters = new IConverter[table.getColumns().size()];
-		for (int index = 0; index < table.getColumns().size(); index++) {
-			Column column = table.getColumns().get(index);
-			FieldDef fieldDef = getSpaceDef().getFieldDef(getFieldName(column));
-			Class<?> from = getJavaType(column.getType());
-			FieldType to = fieldDef.getType();
-			IConverter converter = factory.getConverter(from, to);
-			converters[index] = converter;
-		}
-		return converters;
+	@Override
+	public Class<?> getType(FieldDef fieldDef, int index) {
+		Column column = table.getColumns().get(index);
+		return getJavaType(column.getType());
 	}
 
-	public IConverter[] getOutputConverters() {
-		ConverterFactory factory = getConverterFactory();
-		IConverter[] converters = new IConverter[table.getColumns().size()];
-		for (int index = 0; index < table.getColumns().size(); index++) {
-			Column column = table.getColumns().get(index);
-			FieldDef fieldDef = getSpaceDef().getFieldDef(getFieldName(column));
-			FieldType from = fieldDef.getType();
-			Class<?> to = getJavaType(column.getType());
-			IConverter converter = factory.getConverter(from, to);
-			converters[index] = converter;
-		}
-		return converters;
-	}
 }

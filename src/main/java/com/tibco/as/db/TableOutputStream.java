@@ -32,7 +32,7 @@ public class TableOutputStream implements IOutputStream<Object[]> {
 			// create table
 			destination.execute(destination.getCreateSQL());
 		} else {
-			destination.setColumns();
+			destination.setColumnsFromMetaData();
 		}
 		String sql = destination.getInsertSQL();
 		log.log(Level.FINE, "Preparing statement: {0}", sql);
