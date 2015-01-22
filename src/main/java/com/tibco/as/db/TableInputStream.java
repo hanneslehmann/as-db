@@ -71,6 +71,9 @@ public class TableInputStream implements IInputStream<Object[]> {
 
 	@Override
 	public Object[] read() throws SQLException {
+		if (resultSet.isClosed()) {
+			return null;
+		}
 		if (resultSet.next()) {
 			Object[] array = new Object[accessors.length];
 			for (int index = 0; index < accessors.length; index++) {
@@ -88,10 +91,7 @@ public class TableInputStream implements IInputStream<Object[]> {
 	}
 
 	@Override
-	public synchronized void close() throws SQLException {
-		if (resultSet.isClosed()) {
-			return;
-		}
+	public void close() throws SQLException {
 		resultSet.close();
 	}
 
