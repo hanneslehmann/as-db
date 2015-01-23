@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://as.tibco.com/db.xsd">
-  <field type="blob" dataType="blob" />
-  <field type="boolean" dataType="bit" size="1" />
+  <field type="blob" dataType="blob" size="255" />
+  <field type="boolean" dataType="numeric" size="1" decimalDigits="0" />
   <field type="char" dataType="char" size="1" />
   <field type="datetime" dataType="timestamp" />
   <field type="double" dataType="double" />
   <field type="float" dataType="real" />
   <field type="integer" dataType="integer" />
-  <field type="long" dataType="bigint" />
+  <field type="long" dataType="numeric" size="19" decimalDigits="0" />
   <field type="short" dataType="smallint" />
   <field type="string" dataType="varchar" />
   <column type="char" fieldType="string" />

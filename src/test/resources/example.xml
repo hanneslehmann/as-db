@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://as.tibco.com/db.xsd">
+  <table name="TABLE1" />
+  <table name="TABLE2" schema="SCHEMA1">
+    <column name="COLUMN1" type="varchar" size="255" keySequence="1" />
+    <column name="COLUMN2" type="timestamp" keySequence="2" />
+    <column name="COLUMN3" type="numeric" size="16" decimals="2" />
+  </table>
+  <table name="TABLE3" space="Space2" catalog="CATALOG1" schema="SCHEMA1">
+    <selectSQL>SELECT * FROM TABLE3 WHERE COLUMN3 > 10</selectSQL>
+    <countSQL>SELECT COUNT(*) FROM TABLE3 WHERE COLUMN3 > 10</countSQL>
+    <insertSQL>INSERT INTO TABLE3 (COLUMN1, COLUMN2, COLUMN3) VALUES
+        (?, ?, ?)</insertSQL>
+    <column name="COLUMN1" field="Field1" />
+    <column name="COLUMN2" field="Field2" />
+    <column name="COLUMN3" field="Field3" />
+  </table>
+</database>

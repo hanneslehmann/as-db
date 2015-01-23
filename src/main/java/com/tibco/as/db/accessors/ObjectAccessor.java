@@ -4,14 +4,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.tibco.as.db.IPreparedStatementAccessor;
-
-public class DefaultAccessor implements IPreparedStatementAccessor {
+public class ObjectAccessor implements IColumnAccessor {
 
 	private int index;
 	private int sqlType;
 
-	public DefaultAccessor(int index, int sqlType) {
+	public ObjectAccessor(int index, int sqlType) {
 		this.index = index;
 		this.sqlType = sqlType;
 	}

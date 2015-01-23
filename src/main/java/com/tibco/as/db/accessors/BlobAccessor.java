@@ -5,9 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.tibco.as.db.IPreparedStatementAccessor;
-
-public class BlobAccessor implements IPreparedStatementAccessor {
+public class BlobAccessor implements IColumnAccessor {
 
 	private int index;
 
@@ -24,7 +22,7 @@ public class BlobAccessor implements IPreparedStatementAccessor {
 	}
 
 	@Override
-	public Object get(ResultSet resultSet) throws SQLException {
+	public byte[] get(ResultSet resultSet) throws SQLException {
 		Blob blob = resultSet.getBlob(index);
 		if (blob == null) {
 			return null;
